@@ -1,49 +1,39 @@
-# Notes from last time:
-
-A couple of things worth flagging:
-
-The relay section is the densest because it's the most novel part of the design — it's where clew actually earns its name. If we want to revisit it after sleeping on it, the plan doc is structured so editing that section in isolation is easy.
-The CLI sketch is deliberately tentative. I wrote it as "command shapes mentioned so far," not as a finished spec. Q7 (the next big chunk) is where we lock that down properly, and there are real decisions still to make there — output formats, the agent workflow loop, exit code conventions, how clew init works.
-I added a few open questions you didn't explicitly raise (git hooks, distribution, TUI compatibility) so they don't get lost. Some might not matter; flag any you want to drop.
-
-Whenever you're ready to dive back in, the obvious next branches are:
-
-Q7: full CLI surface — the meatiest remaining design chunk.
-.clew/README.md template — short, since it's load-bearing for agent onboarding.
-clew init behavior — small but worth nailing down.
-
 # Clew — Design Plan
 
-A lightweight, agent-first project management system. Local, CLI-driven, git-native, designed to minimize context window usage and aid handoffs between agent sessions.
+> **Status: living design doc.** Active iteration; nothing here is set in stone. If something looks wrong, push back. Companion notes: `hammock-thinking/DDD/CLI-design-notes.md` (interaction-pattern sketches).
 
-The name _clew_ refers to the ball of thread that guides you out of a labyrinth
+## What Clew is
 
----
+A lightweight, local, git-native project management system for hobby projects and tiny teams (and the agents working on them). The name _clew_ refers to the ball of thread Ariadne gave Theseus to navigate the labyrinth.
+
+Guiding philosophy: [Simple Made Easy (Hickey)](https://www.youtube.com/watch?v=LKtk3HCgTa8) — pursue the goldilocks zone of features; resist complexity that doesn't pay rent.
 
 ## Goals
 
-- Open source, works locally, no server.
-- CLI-first (Rust). TUI/GUI possibly later.
-- Coding agents are the primary user; humans a close second.
+- Open source, works locally, no server, no subscription.
+- CLI-first (Rust). TUI/GUI possibly later, without changing the data model.
+- Optimized for agents and humans equally — but realistically agents will be the dominant consumer; design tradeoffs favor agents when they conflict.
+- Agent harness agnostic — easy to swap harnesses (Claude Code, Codex, Cursor, etc.) within the same project. No coupling to harness-specific conventions.
 - Minimize context window / token usage.
+  - Push as much work as possible to deterministic software (Clew CLI).
+  - Aid agent session:session handoffs with minimal token cost _(addresses the severe anterograde amnesia of LLMs)_.
 - Backlog of work, taggable by humans or agents.
-- Push as much work as possible to deterministic software (Clew CLI).
-- Integrate beautifully with git locally.
-- Aids agent session:session handoffs with minimal token cost.
-  - _(way to address the severe anterograde amnesia of LLMs)_
+- Integrate beautifully with git locally; rely on the project's git remote for cloud sync / backup (no separate sync layer).
 
 ## Non-goals
 
 - Selling complex Agile/Scrum methodology. Pragmatic and effective only.
-- Maximizing parallel agent sessions. Default assumption: 1–2 agents at a time.
+- Maximizing parallel agent sessions or token-maxing. Default assumption: 1–2 primary agents at a time, starting fresh sessions per stable increment.
+  - Sub-agents are fine and encouraged — but for token efficiency (e.g., scout agents reading large files), not for parallelizing tracked work.
+- Replacing enterprise tooling (Jira) or broader knowledge systems (Monday, ClickUp). Individuals and tiny teams only.
 
 ---
 
 ## Vocabulary
 
 - **Task** — The most atomic unit of work. A single action or reminder. Lives as a checkbox inside an increment, never as its own file.
-- **Increment** — A standalone unit of work containing zero or more tasks. When completed, the codebase must be stable, tested, linted, and safely committable. The unit of work an agent typically completes in a session.
-- **Epic** — A larger feature consisting of two or more increments that must ship together for the new functionality to work.
+- **Increment** — A standalone unit of work containing zero or more tasks. When completed, the goal is for the codebase to be stable, tested, linted, and safely committable. The unit of work an agent typically completes in a session. _[1 session : 1 Increment] is an encouraged pattern, not a requirement._
+- **Epic** — A larger body of work consisting of two or more increments that must ship together for the new functionality to work.
 - **Relay** — An ephemeral transition of context between agent sessions. Captures what doesn't live anywhere else (discoveries, next-actions, open questions).
 
 ---
@@ -337,7 +327,7 @@ Tentative command shapes mentioned so far:
 - `clew relay <id>` — open/edit the relay for an increment.
 - `clew lint` — flag drift (path/file mismatches, dangling references).
 - `clew renumber <old> <new>` — atomic ID renumber with reference rewrites.
-- `--json` flag on every read command for agent-friendly output.
+- ~~`--json` flag on every read command for agent-friendly output.~~ (realized that json is unnecessary token bloat when providing information to the agent; decided output will just be the direct yaml frontmatter + markdown of the item (Increment or Epic)
 
 ---
 

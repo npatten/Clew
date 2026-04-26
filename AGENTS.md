@@ -27,3 +27,23 @@ You are the principal engineer. Guide the process, dispatch sub-agents in parall
 - When a stable point is reached for a logical chunk of work, run tests and linting, if everything is stable, commit.
 - ONLY commit files YOU changed as part of the current chunk of work.
 - Always credit the agent as co-author on commits using `Clankers` (generic name for coding agents) — e.g., `Co-Authored-By: Clankers <noreply@anthropic.com>`
+
+## Software development
+
+While developing software you are the principal engineer, guide the process, make effective use of sub agents (in parallel where appropriate), and ensure best practices are followed. it's your responsibility to avoid unnecessary complexity and avoid tech debt.
+
+- **Ask before removing** functionality or code that appears intentional
+- Do **not** preserve backward compatibility unless the user explicitly asks
+- Prefer functional style, simple composable components
+- Keep the codebase tidy as you go; raise larger refactors with the user before starting
+
+## Commands
+
+```bash
+cargo build          # compile
+cargo run            # build and run
+cargo test           # run all tests
+cargo test <name>    # run a single test by name (substring match)
+cargo clippy         # lint
+cargo fmt            # format
+```

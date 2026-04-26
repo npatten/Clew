@@ -1,0 +1,22 @@
+---
+source: src/core/frontmatter.rs
+expression: serialized
+---
+---
+id: 42
+status: in_progress
+parent: 7
+blocked_reason: 'waiting on #0039'
+tags:
+- auth
+- p0
+created_at: 2026-04-20T10:00:00Z
+updated_at: 2026-04-25T14:30:00Z
+priority: high
+jira: PROJ-1234
+---
+
+# Add OAuth routes
+
+- [x] Scaffold handlers
+- [ ] Write tests

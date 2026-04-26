@@ -1,0 +1,29 @@
+[package]
+name = "clew"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4", default-features = false, features = ["derive", "std", "help"] }
+serde = { version = "1", features = ["derive"] }
+yaml_serde = "0.10"
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
+slug = "0.1"
+directories = "5"
+thiserror = "1"
+anyhow = "1"
+
+[dev-dependencies]
+assert_cmd = "2"
+assert_fs = "1"
+predicates = "3"
+insta = { version = "1", features = ["yaml"] }
+rstest = "0.18"
+
+[lib]
+name = "clew"
+path = "src/lib.rs"
+
+[[bin]]
+name = "clew"
+path = "src/main.rs"

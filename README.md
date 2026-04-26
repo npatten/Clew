@@ -1,0 +1,1 @@
+In Greek myth, Ariadne gave Theseus the "clew" (a ball of thread) to navigate the labyrinth so he could find his way back out. It represents the lightweight tracking of Tasks and Increments ensuring the codebase remains stable and you never lose your way.

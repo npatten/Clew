@@ -1,8 +1,22 @@
+# Notes from last time:
+
+A couple of things worth flagging:
+
+The relay section is the densest because it's the most novel part of the design — it's where clew actually earns its name. If we want to revisit it after sleeping on it, the plan doc is structured so editing that section in isolation is easy.
+The CLI sketch is deliberately tentative. I wrote it as "command shapes mentioned so far," not as a finished spec. Q7 (the next big chunk) is where we lock that down properly, and there are real decisions still to make there — output formats, the agent workflow loop, exit code conventions, how clew init works.
+I added a few open questions you didn't explicitly raise (git hooks, distribution, TUI compatibility) so they don't get lost. Some might not matter; flag any you want to drop.
+
+Whenever you're ready to dive back in, the obvious next branches are:
+
+Q7: full CLI surface — the meatiest remaining design chunk.
+.clew/README.md template — short, since it's load-bearing for agent onboarding.
+clew init behavior — small but worth nailing down.
+
 # Clew — Design Plan
 
 A lightweight, agent-first project management system. Local, CLI-driven, git-native, designed to minimize context window usage and aid handoffs between agent sessions.
 
-The name _clew_ refers to the ball of thread that guides you out of a labyrinth — a fitting metaphor for context-relay tooling.
+The name _clew_ refers to the ball of thread that guides you out of a labyrinth
 
 ---
 
@@ -13,9 +27,10 @@ The name _clew_ refers to the ball of thread that guides you out of a labyrinth 
 - Coding agents are the primary user; humans a close second.
 - Minimize context window / token usage.
 - Backlog of work, taggable by humans or agents.
-- Push as much work as possible to deterministic software (CLI tools, scripts).
-- Integrates beautifully with git locally.
-- Aids agent-to-agent handoffs with minimal token cost.
+- Push as much work as possible to deterministic software (Clew CLI).
+- Integrate beautifully with git locally.
+- Aids agent session:session handoffs with minimal token cost.
+  - _(way to address the severe anterograde amnesia of LLMs)_
 
 ## Non-goals
 
@@ -26,8 +41,8 @@ The name _clew_ refers to the ball of thread that guides you out of a labyrinth 
 
 ## Vocabulary
 
-- **Task** — The most atomic unit of work. A single trackable action or reminder. Lives as a checkbox inside an increment, never as its own file.
-- **Increment** — A standalone unit of work containing one or more tasks. When completed, the codebase must be stable, tested, linted, and safely committable. The unit an agent typically works in a session.
+- **Task** — The most atomic unit of work. A single action or reminder. Lives as a checkbox inside an increment, never as its own file.
+- **Increment** — A standalone unit of work containing zero or more tasks. When completed, the codebase must be stable, tested, linted, and safely committable. The unit of work an agent typically completes in a session.
 - **Epic** — A larger feature consisting of two or more increments that must ship together for the new functionality to work.
 - **Relay** — An ephemeral transition of context between agent sessions. Captures what doesn't live anywhere else (discoveries, next-actions, open questions).
 
@@ -42,7 +57,7 @@ All state lives in plain markdown files with YAML frontmatter. Reasoning:
 - Git integration is free (human-readable diffs, working merges, blame, history).
 - Agents read markdown natively and cheaply — no schema or CLI required to inspect.
 - Token-efficient: frontmatter handles structured fields; body holds prose.
-- Deterministic CLI tools (`grep`, `rg`, `awk`, plus our own) work on top.
+- Deterministic CLI tools (`grep`, `rg`, `awk`, plus our own `clew`) work on top.
 - Graceful failure mode: if the CLI breaks, data is still readable and editable.
 
 ### Directory layout

@@ -32,8 +32,7 @@ Guiding philosophy: [Simple Made Easy (Hickey)](https://www.youtube.com/watch?v=
 ## Vocabulary
 
 - **Task** — The most atomic unit of work. A single action or reminder. Lives as a checkbox inside an increment, never as its own file.
-- **Increment** — A standalone unit of work containing zero or more tasks. When completed, the goal is for the codebase to be stable, tested, linted, and safely committable. The unit of work an agent typically completes in a session. _[1 session : 1 Increment] is an encouraged pattern, not a requirement._
-- **Epic** — A larger body of work consisting of two or more increments that must ship together for the new functionality to work.
+- **Increment** — A standalone unit of work containing zero or more tasks. When completed, the goal is for the codebase to be stable, tested, linted, and safely committable. The unit of work an agent typically completes in a session. _[1 session : 1 Increment] is an encouraged pattern, not a requirement._ An increment may have a parent increment; a parent with multiple children forms an epic (a larger body of work that must ship together).
 - **Relay** — An ephemeral transition of context between agent sessions. Captures what doesn't live anywhere else (discoveries, next-actions, open questions).
 
 ---
@@ -54,25 +53,21 @@ All state lives in plain markdown files with YAML frontmatter. Reasoning:
 
 ```
 .clew/
-├── epics/
-│   └── 0007-oauth-overhaul.md
 ├── increments/
-│   ├── fragments.md                  # permanent catch-all, never archived
 │   ├── 0042-add-oauth-routes.md
-│   └── 0043-token-refresh.md
+│   ├── 0043-token-refresh.md
+│   └── 0007-oauth-overhaul.md       # parent increment (has children via their `parent:` field)
 ├── archive/
-│   ├── epics/
-│   └── increments/
+│   └── 0001-old-work.md             # completed or abandoned increments
 ├── relays/
-│   └── 0042.md                       # one rolling relay per increment
-├── path.md                           # ordered priority list
-└── README.md                         # conventions for humans + agents
+│   └── 0042.md                      # one rolling relay per increment
+├── path.md                          # ordered priority list
+└── README.md                        # conventions for humans + agents
 ```
 
 - **Hidden directory** (`.clew/`) — matches `.git/`, `.github/`, etc. Tooling/metadata convention.
-- **Separate `epics/` and `increments/` directories** — type encoded in path. Cheapest possible "what's in flight" query (one `ls`, no parsing). Different lifecycles (increments archive frequently, epics rarely). Self-documenting taxonomy.
-- **`fragments.md`** — special permanent increment for orphaned tasks (work discovered outside the current increment's scope). Not numbered, never archives. Agent's instruction: don't expand current increment's scope; append to `fragments.md` instead.
-- **Archive on done** — completed increments and epics move to `.clew/archive/`. Keeps working set small (token-efficient `ls`); preserves git history via `git mv`. Reopening (`clew reopen`) moves them back.
+- **Single `increments/` directory** — all items are increments. Parent-child relationships are expressed via the `parent:` field in frontmatter. An increment with children is semantically an epic (a larger body of work that must ship together), but it's stored and treated like any other increment.
+- **Archive on done** — completed or abandoned increments move to `.clew/archive/`. Keeps working set small; preserves git history via `git mv`. Reopening (`clew reopen`) moves them back.
 
 ### Tasks live inside increments
 
@@ -97,14 +92,14 @@ Tasks are GitHub-flavored markdown checkboxes inside the increment file:
 id: 0042
 status: in_progress # backlog | todo | in_progress | done | abandoned
 blocked_reason: "..." # optional; presence = blocked
-epic: 0007 # optional
+parent: 0007 # optional; this increment is a child of increment 0007
 tags: [auth, p0] # optional, free-form, CLI-aware
 created_at: 2026-04-20T10:00:00Z
 updated_at: 2026-04-25T14:30:00Z
 ---
 ```
 
-CLI-managed fields: `id`, `status`, `created_at`, `updated_at`. CLI-aware: `epic`, `blocked_reason`, `tags`. Everything else is preserved-but-ignored — see Extensibility below.
+CLI-managed fields: `id`, `status`, `created_at`, `updated_at`. CLI-aware: `parent`, `blocked_reason`, `tags`. Everything else is preserved-but-ignored — see Extensibility below.
 
 ---
 
@@ -121,7 +116,7 @@ CLI-managed fields: `id`, `status`, `created_at`, `updated_at`. CLI-aware: `epic
 
 - **Zero-padded 4-digit IDs** (`0042`). Token-cheap, memorable, sortable.
 - **Slug is for humans**; ID is for references. Slug can change freely (`git mv` the file, edit frontmatter); references stay valid because they use the ID.
-- **Separate counters for epics and increments.** Directory split disambiguates; numbers stay small and meaningful within their type. CLI can output `E7`/`I42` when ambiguity matters in display.
+- **Single counter for all increments.** No distinction by type (parent vs. child). Numbers stay small and meaningful.
 - **`#` prefix for references** (`#0042`). Matches GitHub convention; disambiguates references from numbers in prose.
 - **Merge conflicts** (when two agents create the same ID): live with them at this scale. Build `clew renumber 0042 0044` early — atomically renames file, updates frontmatter ID, rewrites references. Cheap in Rust. Don't use UUIDs/hashes; cure worse than disease.
 
@@ -192,7 +187,7 @@ YAML frontmatter is _already_ extensible. Users who want `priority: high` or `ji
 
 ## Path: `path.md`
 
-A single hand-curated markdown file expressing priority order across all increments and epics.
+A single hand-curated markdown file expressing priority order across all in-flight increments.
 
 ### Format
 
@@ -202,19 +197,18 @@ A single hand-curated markdown file expressing priority order across all increme
 - #0042-add-oauth-routes
 - #0044-fix-session-timeout
 - #0043-token-refresh-logic
-- #0007-oauth-overhaul (epic)
 ```
 
 - Line order = priority.
 - **Full ID+slug form** for human scannability — `path.md` is read every session and is small; readability wins over token-shaving here.
+- **Increments only** — path lists individual increments, not parent increments. Parent-child relationships are expressed in frontmatter (`parent:`), not in path.
 - Permissive parser: extracts `#NNNN` references, ignores everything else (so users can add prose annotations freely).
 - Bullet list (no numbering — order is positional, renumbering on edit is annoying).
 
 ### Rules
 
 - **Opt-in.** Empty `path.md` is fine for projects with 1–3 todos.
-- **Resolution order**: `clew next` returns the top of `path.md` if non-empty; otherwise the oldest `todo` by `created_at`.
-- **Epics allowed in path.** When `clew next` hits an epic, it descends to the epic's first ready increment.
+- **Resolution order**: `clew next` returns the top of `path.md` if non-empty; otherwise the oldest `todo` by `created_at`. Always returns a single increment (never a parent increment).
 - **CLI auto-maintains.** `clew done 0042` removes `#0042` from `path.md`. CLI normalizes entries to current ID+slug form on write (self-healing against scope/slug drift).
 - **`clew lint`** flags drift: items in path that don't exist; `todo` items not in path that maybe should be.
 
@@ -313,9 +307,9 @@ A typical session:
 
 Tentative command shapes mentioned so far:
 
-- `clew new <epic|increment>` — creates in `backlog` (or `todo` with `--ready`).
+- `clew new increment` — creates in `backlog` (or `todo` with `--ready`). Optional `--parent` flag to link to a parent increment.
 - `clew show <id>` — accepts numeric ID or slug.
-- `clew list [--tag X] [--status Y]` — filtered listing.
+- `clew list [--tag X] [--status Y] [--all]` — filtered listing. Default: in-flight items only. `--all` includes archived.
 - `clew promote <id>` — backlog → todo.
 - `clew start <id>` — → in_progress.
 - `clew block <id> "reason"` / `clew unblock <id>` — toggle blocked flag.
@@ -327,7 +321,7 @@ Tentative command shapes mentioned so far:
 - `clew relay <id>` — open/edit the relay for an increment.
 - `clew lint` — flag drift (path/file mismatches, dangling references).
 - `clew renumber <old> <new>` — atomic ID renumber with reference rewrites.
-- ~~`--json` flag on every read command for agent-friendly output.~~ (realized that json is unnecessary token bloat when providing information to the agent; decided output will just be the direct yaml frontmatter + markdown of the item (Increment or Epic)
+- ~~`--json` flag on every read command for agent-friendly output.~~ (realized that json is unnecessary token bloat when providing information to the agent; decided output will just be the direct yaml frontmatter + markdown of the item)
 
 ---
 

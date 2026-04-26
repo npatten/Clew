@@ -8,13 +8,14 @@ session_count: 2
 
 ## Status
 
-Mid-stream on DDD work in `hammock-thinking/DDD/`. Meta-doc and 24-path candidate list are locked. `CLI-design-notes.md` is open and accumulating. **No path bodies drafted yet** — that's next session's main work.
+DDD phase complete — design locked. Meta-doc, 24-path candidate list, and updated crew-plan.md all finalized. Ready to begin drafting path bodies starting with IP-03.
 
 ## Just finished
 
-- Reconciled `IP-notes.md` template against `initial-nikko-rough-draft-IP.md`: mermaid optional, added Variants and Notes, removed Forks. Pointed Agent role at `crew-plan.md` (the working spec) rather than `README.md` (public intro).
-- Collapsed candidate IPs 37 → 24 in `interaction-paths.md`. Added new IP-09 (decompose plan/PRD/spec into epics+increments) — judgment work, Clew receives output.
-- Started `CLI-design-notes.md` with two open observations: (a) editor-spawning commands vs. agent flow — four shapes sketched, no decision; (b) maybe-relays-outside-increment-frame — hold off, revisit.
+- Co-designed epic/increment distinction: collapsed into single increment type with optional parent-linkage. Parent increment with children = epic (semantic, not structural). All increments use same counter, stored in single `increments/` dir.
+- Updated `crew-plan.md`: vocabulary, storage model, frontmatter (epic: → parent:), path rules, CLI sketch. Design is now internally consistent.
+- Identified three new CLI-design observations: (a) TTY detection confirmed reliable across agent modes; (b) agents prefer dedicated subcommands over conditional flags; (c) $EDITOR/$VISUAL unreliable with Electron editors — init should scan PATH and store preference in config.
+- Codified session-unit-of-work: `clew next` always returns a single increment (never a parent). Path lists increments only. Human review can batch per-epic or stay per-increment.
 
 ## Next action
 
@@ -22,15 +23,16 @@ Draft IP-03 body (fresh agent picks up work — canonical loop). Use template in
 
 ## Context worth carrying
 
-- **Working source of truth is `hammock-thinking/crew-plan.md`**, not `README.md`. `IP-notes.md` § Agent role makes this explicit.
-- **Cross-cutting observations go to `CLI-design-notes.md` as they surface** — no waiting for synthesis. Backfill source-path references when bodies are drafted.
-- **Editor-spawning question is unresolved** — don't lock in a shape while drafting; just note the call-and-edit pattern each path implies. The optimal shape is a token-cost question across IP coverage.
+- **Epic/increment distinction collapsed:** one type, parent-linkage in frontmatter. `parent: 0007` not `epic: 0007`. Update any code/templates referencing the old model.
+- **`clew next` always returns an increment** (never a parent). Path lists increments only. Session unit of work is always a single increment.
+- **Editor resolution (TTY-detected fallback)**: scope is still open on init auto-detection vs. manual config. CLI-design-notes.md has tentative directions. Flag when drafting IP-01.
+- **Subcommand vs. flag principle:** when behavior changes destination/shape/validation, use a new subcommand (`clew import`, `clew capture`) not a flag. Apply when drafting IP-08/IP-09.
 
 ## Open questions
 
-- [Decide] Path body draft order (proposal in "Next action").
-- [Human?] Project-root `relay.md` location is a manual workaround until Clew exists. Fine to keep there?
+- [Decide] Editor init: auto-detect editors in PATH + prompt, or just manual config in `.clew/config.toml`? (see CLI-design-notes.md § Editor resolution)
+- [Decide] When drafting bulk import (IP-09), use storage-format-mirror (agent emits markdown-with-frontmatter blocks) or YAML manifest? (leaning storage-mirror for consistency)
 
 ## Drift from plan
 
-- Relay format spec'd `increment:` in frontmatter; this relay uses `topic:` because there's no increment to attach to. Captured as an open observation in `CLI-design-notes.md` — don't generalize from it yet.
+- None this session. Design moved faster and more coherently than expected; no task scope creep.

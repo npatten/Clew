@@ -59,8 +59,7 @@ All state lives in plain markdown files with YAML frontmatter. Reasoning:
 │   └── 0007-oauth-overhaul.md       # parent increment (has children via their `parent:` field)
 ├── archive/
 │   └── 0001-old-work.md             # completed or abandoned increments
-├── relays/
-│   └── 0042.md                      # one rolling relay per increment
+├── relay.md                         # single rolling session-handoff file
 ├── path.md                          # ordered priority list
 └── README.md                        # conventions for humans + agents
 ```
@@ -68,6 +67,8 @@ All state lives in plain markdown files with YAML frontmatter. Reasoning:
 - **Hidden directory** (`.clew/`) — matches `.git/`, `.github/`, etc. Tooling/metadata convention.
 - **Single `increments/` directory** — all items are increments. Parent-child relationships are expressed via the `parent:` field in frontmatter. An increment with children is semantically an epic (a larger body of work that must ship together), but it's stored and treated like any other increment.
 - **Archive on done** — completed or abandoned increments move to `.clew/archive/`. Keeps working set small; preserves git history via `git mv`. Reopening (`clew reopen`) moves them back.
+- **Single rolling `relay.md`** — one session-handoff file at the top level, overwritten each session. Git provides history. Not archived with increments.
+- **User-level config lives elsewhere.** Editor preferences and other per-user settings live at `~/.config/clew/config.toml` (platform-correct path via the `directories` crate), NOT in `.clew/`. The "no project-level config file" rule stays pure: `.clew/` holds project state only.
 
 ### Tasks live inside increments
 
@@ -85,6 +86,23 @@ Tasks are GitHub-flavored markdown checkboxes inside the increment file:
 - **No per-task IDs, timestamps, or status enum.** Granularity trap. The increment is the unit of state; tasks are a checklist.
 - **Cross-increment dependencies** are expressed in prose ("blocked on #0039"), not via task-level IDs. Increment-level blocking is the right granularity.
 
+### Task parser tolerance
+
+Postel's Law: liberal in what we accept, strict in what we produce. LLMs hallucinate minor whitespace variations; the parser shouldn't break when an agent gets it slightly wrong.
+
+**Accept on read** (all valid GFM, plus reasonable whitespace tolerance):
+
+- `- [ ]`, `- [x]`, `- [X]` (uppercase X)
+- `* [ ]`, `* [x]` (asterisk bullet)
+- Extra spaces between bullet and `[`: `-   [ ]`
+- Tabs in place of spaces
+
+**Reject on read** (invents non-GFM dialect; would break markdown renderers):
+
+- `-[ ]` (no space between bullet and bracket — not a valid GFM checkbox in any spec; tools like GitHub, VSCode preview, etc. won't render it as a checkbox)
+
+**Write canonically:** the CLI always emits `- [ ]` / `- [x]` (hyphen bullet, single space, lowercase `x`). On any CLI write that touches a task list, normalize to canonical form. This keeps files compatible with every other markdown tool and prevents drift from agent-introduced variations accumulating over time.
+
 ### Frontmatter shape
 
 ```yaml
@@ -92,6 +110,7 @@ Tasks are GitHub-flavored markdown checkboxes inside the increment file:
 id: 0042
 status: in_progress # backlog | todo | in_progress | done | abandoned
 blocked_reason: "..." # optional; presence = blocked
+abandoned_reason: "..." # optional; written by `clew abandon`; preserved through archive/reopen
 parent: 0007 # optional; this increment is a child of increment 0007
 tags: [auth, p0] # optional, free-form, CLI-aware
 created_at: 2026-04-20T10:00:00Z
@@ -99,7 +118,9 @@ updated_at: 2026-04-25T14:30:00Z
 ---
 ```
 
-CLI-managed fields: `id`, `status`, `created_at`, `updated_at`. CLI-aware: `parent`, `blocked_reason`, `tags`. Everything else is preserved-but-ignored — see Extensibility below.
+CLI-managed fields: `id`, `status`, `created_at`, `updated_at`. CLI-aware: `parent`, `blocked_reason`, `abandoned_reason`, `tags`. Everything else is preserved-but-ignored — see Extensibility below.
+
+**Why `abandoned_reason` is persisted in frontmatter:** when an agent later searches `archive/` to see if a feature was ever attempted, the "why we stopped" context must be permanently attached to the file. Otherwise agents hallucinate that they should retry the dead end. Parallel to `blocked_reason`, but written once by `clew abandon` and not cleared (the file is archived; the reason is part of the historical record).
 
 ---
 
@@ -119,6 +140,38 @@ CLI-managed fields: `id`, `status`, `created_at`, `updated_at`. CLI-aware: `pare
 - **Single counter for all increments.** No distinction by type (parent vs. child). Numbers stay small and meaningful.
 - **`#` prefix for references** (`#0042`). Matches GitHub convention; disambiguates references from numbers in prose.
 - **Merge conflicts** (when two agents create the same ID): live with them at this scale. Build `clew renumber 0042 0044` early — atomically renames file, updates frontmatter ID, rewrites references. Cheap in Rust. Don't use UUIDs/hashes; cure worse than disease.
+
+### Allocation: scan-and-increment
+
+`clew new` allocates IDs by scanning the filesystem rather than maintaining a counter file:
+
+1. List filenames in `increments/` and `archive/`.
+2. Parse the leading 4-digit ID from each.
+3. Pick `max(all_ids) + 1`.
+
+Both directories must be scanned — archived IDs can be higher than active ones (e.g., create `#0001` and `#0002`, archive `#0002`, max-active is now `1` but max-archive is `2`; next ID must be `3`). The "single counter, no reuse" rule depends on this.
+
+No counter file: it adds maintenance without adding safety (it would conflict on merge just like file IDs do), and scanning is microseconds even at thousands of increments.
+
+### Slug rules
+
+Slugs are **part of the identifier contract** — `clew show <slug>` is a supported lookup form, so slugs must be unique. Generation rules:
+
+- Use the `slug` crate (which wraps `deunicode` for ASCII-folding).
+- Apply a 50-character truncation on top of the crate's output.
+- If transliteration yields an empty string (e.g., all-CJK input), fall back to `untitled`. The user can `git mv` to rename if they care.
+
+**Collision handling: error at creation, no auto-suffixing.**
+
+```
+$ clew new "Add OAuth"
+error: slug 'add-oauth' is already used by #0042-add-oauth.md
+       try a more specific title (e.g., "Add OAuth for Google")
+```
+
+- The collision check spans `increments/` AND `archive/` — once a slug is used, it's reserved forever (otherwise `clew reopen` could collide).
+- No `-2`, `-3` magic suffixes — files don't sprout numbers the user didn't choose.
+- Forces better titles. Better titles produce better slugs, which is good for both humans and agents.
 
 ---
 
@@ -163,6 +216,18 @@ Status reflects intent ("I want to be working this"); flag reflects reality. Cle
 ### Timestamps
 
 Just `created_at` and `updated_at` in frontmatter, both CLI-managed. No per-transition timestamps — git history covers that for free if you ever need it.
+
+**Format rules:**
+
+- **RFC 3339 / ISO 8601 with `Z` (UTC) suffix.** Example: `2026-04-26T15:30:00Z`. Sortable as strings, unambiguous, zero timezone confusion.
+- **Second precision**, no subseconds. Token waste; second-resolution is plenty for human-scale work.
+- **UTC always.** Never local-tz — local introduces "what time is it for the file" ambiguity across collaborators.
+- **`chrono` crate** for parsing/formatting (stripped: `default-features = false, features = ["clock", "serde"]`).
+
+**When `updated_at` bumps:**
+
+- **Any CLI write.** `clew start`, `clew done`, `clew block`, tag edits — all bump it.
+- **Manual file edits don't bump it.** If a user opens the increment in an editor and tweaks the body, the CLI doesn't see it; `updated_at` stays put. This is a deliberate tradeoff for simplicity — the CLI is the source of truth for timestamps. If users want to bump it manually, they can re-save via the CLI or accept the mismatch.
 
 ---
 
@@ -218,31 +283,32 @@ A single hand-curated markdown file expressing priority order across all in-flig
 
 A relay is the artifact created when one agent session ends and another begins. It captures the **ephemeral context** that doesn't live in the increment file, git history, or the codebase: discoveries, next-actions, open questions, drift from plan.
 
-### One rolling relay per increment
+### Single rolling relay
 
-`.clew/relays/{id}.md`. Each session updates the same file (overwrites or edits). Git provides history if needed. Archives with the increment on `clew done`.
+`.clew/relay.md` — one file at the top level, overwritten each session. Git provides history if needed. **Not archived** with increments — the relay is "current focus" state, not increment-bound.
 
-Rationale: a fresh agent on #0042 reads exactly one relay — always current. Old relay content is mostly dead weight (it's been integrated into the codebase or the increment file, or superseded).
+Rationale: the design assumes 1–2 primary agents at a time, working a single in-progress increment per session. A per-increment relay model solves a problem that doesn't exist at this scale. If concurrent in-flight work ever becomes real, per-increment relays can be added later (small migration, additive change).
 
 ### When written
 
-Manually at session end via `clew relay {id}`. The CLI:
+Manually at session end via `clew relay`. The CLI:
 
 1. Opens the existing relay (or a template if none).
-2. Pre-fills with `git log` since last relay (raw material for "what's done").
-3. Pre-fills task checkbox state.
+2. Pre-fills with `git log` since the last relay (raw material for "what's done").
+3. Pre-fills task checkbox state for the current focus increment.
 4. Lets the agent fill the rest.
 5. Saves and timestamps.
 
 Manual > auto-generated: the relay's value is in _judgment_ about what's worth carrying forward.
 
+`clew done` does **not** touch `relay.md`. The next session overwrites it naturally. (Auto-clearing or auto-archiving on `done` is purely additive and can be added later if it earns its keep.)
+
 ### Format
 
 ```markdown
 ---
-increment: 0042
+increment: 0042 # which increment this session focused on (omit for non-increment work)
 updated_at: 2026-04-26T15:30:00Z
-session_count: 3
 ---
 
 # Relay: #0042-add-oauth-routes
@@ -288,50 +354,227 @@ Includes file paths and approach. Not a task list — _the_ next thing.
 
 ### Path/relay relationship
 
-- `path.md` is **cross-increment priority**: "across all the work, what's next?"
-- Relay is **intra-increment context**: "within this increment, where are we?"
+- `path.md` is **cross-project priority**: "across all the work, what's next?"
+- `relay.md` is **session-handoff context**: "where am I right now, and what's the next move?" (effectively tailored )
 
 A typical session:
 
 1. Read `path.md` → find next increment.
 2. Read the increment file → plan, tasks, criteria.
-3. Read the relay → current context, next action.
+3. Read `relay.md` → current focus, next action, context.
 4. Work.
-5. `clew relay {id}` at session end.
+5. `clew relay` at session end.
 6. If increment complete: `clew done {id}` (also auto-removes from path).
 7. If priority shifts: edit `path.md` for next session.
 
 ---
 
-## CLI sketch (pending Q7)
+## CLI sketch
 
-Tentative command shapes mentioned so far:
-
-- `clew new increment` — creates in `backlog` (or `todo` with `--ready`). Optional `--parent` flag to link to a parent increment.
+- `clew init` — scaffold `.clew/` in the current directory: creates `increments/`, `archive/`, empty `path.md`, `relay.md`, and a templated `README.md`. Also creates `#0001-bootstrap-clew` as a real setup task (instructs the user to copy the harness-integration section from `.clew/README.md` into their `AGENTS.md` / `CLAUDE.md`, then run `clew done 0001`).
+- `clew new "<title>"` — creates in `backlog` (or `todo` with `--ready`). Optional `--parent <id>` flag to link to a parent increment.
 - `clew show <id>` — accepts numeric ID or slug.
 - `clew list [--tag X] [--status Y] [--all]` — filtered listing. Default: in-flight items only. `--all` includes archived.
 - `clew promote <id>` — backlog → todo.
 - `clew start <id>` — → in_progress.
 - `clew block <id> "reason"` / `clew unblock <id>` — toggle blocked flag.
-- `clew done <id>` — → done, archive, remove from path.
+- `clew done <id>` — → done, archive, remove from path. Does NOT touch `relay.md`.
 - `clew abandon <id> "reason"` — → abandoned, archive.
 - `clew reopen <id>` — → todo, unarchive.
 - `clew next [--start]` — show (or start) the top of path / oldest todo.
-- `clew path` — open `path.md` in `$EDITOR`.
-- `clew relay <id>` — open/edit the relay for an increment.
+- `clew path` — open `path.md` in the user's configured editor.
+- `clew relay` — open/edit `.clew/relay.md` (no ID arg — single rolling file).
 - `clew lint` — flag drift (path/file mismatches, dangling references).
 - `clew renumber <old> <new>` — atomic ID renumber with reference rewrites.
-- ~~`--json` flag on every read command for agent-friendly output.~~ (realized that json is unnecessary token bloat when providing information to the agent; decided output will just be the direct yaml frontmatter + markdown of the item)
+- `--json` optional flag: unclear if this will help agent comprehension or just waste tokens, will have to test later
+
+---
+
+## Implementation
+
+### Stack
+
+| Concern | Crate | Notes |
+|---|---|---|
+| CLI parsing | `clap` | `default-features = false, features = ["derive", "std", "help"]` — POSIX-correct, agent-friendly, stripped of color/suggest bloat |
+| YAML | `yaml_serde` (official YAML org fork of archived `serde_yaml`) + `serde` | Manual `---` splitter for frontmatter; pipe the YAML chunk to `yaml_serde` |
+| Errors (lib) | `thiserror` | Typed errors in `lib.rs`, `core/`, `storage/`, `commands/` |
+| Errors (bin) | `anyhow` | Loose chaining at the `main.rs` boundary |
+| Datetime | `chrono` | `default-features = false, features = ["clock", "serde"]` — RFC 3339 UTC with second precision |
+| Slug | `slug` (wraps `deunicode`) | Plus 50-char truncation on top |
+| User config paths | `directories` | Cross-platform (`~/.config/clew/` on Linux, `~/Library/Application Support/clew/` on macOS, `%APPDATA%\clew\` on Windows) |
+| TTY detection | `std::io::IsTerminal` | Stdlib; no extra dep |
+| Test: CLI invocation | `assert_cmd` | Runs the compiled binary; stdout/stderr separately assertable |
+| Test: filesystem isolation | `assert_fs` | Self-destructing tempdirs per test |
+| Test: snapshot | `insta` | Snapshots of generated markdown+frontmatter (catches format drift; this output IS our agent-facing API) |
+| Test: parameterized | `rstest` | Many similar inputs to one parser/validator |
+| Test: predicates | `predicates` | Composable assertions for `assert_cmd` / `assert_fs` |
+
+### Project layout
+
+```
+clew/
+├── Cargo.toml
+├── src/
+│   ├── main.rs              # Thin: calls clew::run()
+│   ├── lib.rs               # Public API, re-exports
+│   ├── cli.rs               # clap derive structs
+│   ├── error.rs             # thiserror types
+│   ├── core.rs              # module declaration
+│   ├── core/
+│   │   ├── increment.rs     # Increment, Status enum
+│   │   ├── frontmatter.rs   # split + serialize, preserves unknown fields
+│   │   └── path.rs          # path.md parser/writer
+│   ├── storage.rs           # module declaration
+│   ├── storage/
+│   │   └── fs.rs            # filesystem ops (read/write/move increments)
+│   ├── commands.rs          # module declaration
+│   ├── commands/
+│   │   ├── new.rs
+│   │   ├── show.rs
+│   │   ├── list.rs
+│   │   ├── start.rs
+│   │   ├── done.rs
+│   │   └── next.rs
+│   └── templates/
+│       └── init_readme.md   # `include_str!`'d template for `clew init`
+└── tests/
+    └── integration_test.rs  # assert_cmd + assert_fs end-to-end
+```
+
+- **Modern module style** — `core.rs` + `core/` directory, not `core/mod.rs`. Cleaner editor tabs.
+- **`lib.rs` + `main.rs` split** — integration tests can import the library cheaply; `main.rs` stays thin.
+- **`core/` is pure logic** (no I/O); **`storage/` is the I/O seam**; **`commands/` orchestrates**. Easy to unit-test the pure parts.
+- **Templates as `include_str!` markdown files** — easier to iterate on than escaped Rust string literals.
+
+### Frontmatter struct shape
+
+Strongly typed for known fields, with a flatten catch-all that **preserves unknown fields on round-trip** (the single most important parser behavior, per the Extensibility rules):
+
+```rust
+struct Increment {
+    id: u32,
+    status: Status,
+    parent: Option<u32>,
+    blocked_reason: Option<String>,
+    tags: Vec<String>,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+    #[serde(flatten)]
+    extra: HashMap<String, yaml_serde::Value>,
+    // body kept separately, not in the struct
+}
+```
+
+### Error model
+
+Layered:
+- **Library** (`thiserror`): typed variants like `NotFound(u32)`, `InvalidTransition { from, to }`, `SlugCollision(String)`, `Frontmatter(...)`, `Io(...)`. Integration tests can match on variants.
+- **Binary** (`anyhow`): `?` propagation in `main.rs` with `.context(...)` for user-facing display.
+
+**Exit codes:**
+- `0` — success
+- `1` — user error (not found, invalid transition, slug collision, dangling reference)
+- `2` — system error (I/O failure, frontmatter parse failure, internal bug)
+
+### Testing strategy
+
+- **Unit tests in-module** (`#[cfg(test)] mod tests`) for `core/` — parser edge cases, status transitions, slug rules, ID parsing. Fast, no I/O. Use `rstest` for parameterized cases.
+- **Integration tests in `tests/`** for command wiring. One happy path per command + a few cross-command flows (create → start → done). Use `assert_cmd` + `assert_fs` for isolated tempdirs.
+- **Snapshot tests with `insta`** for the generated markdown+frontmatter. The output IS our agent-facing API; format drift is a real bug.
+- **stdout = data; stderr = status/errors.** Codified and tested. `clew next | xargs ...` should give clean data; `clew done 0042` may print "Archived #0042" to stderr.
+- Coverage target: not chasing a number. The goal is "every status transition, every frontmatter edge case, every command's happy path" — naturally lands ~80%+.
+
+### Editor resolution
+
+Clew is a system-wide install operating on project-scoped state. Editor preference is per-user (different developers, different editors), so it lives in user config — not in `.clew/`.
+
+**Config file:** `~/.config/clew/config.toml` (resolved via the `directories` crate; platform-correct paths on Linux/macOS/Windows).
+
+```toml
+# ~/.config/clew/config.toml
+editor = "cursor --wait"
+```
+
+The `--wait` flag is essential for Electron-based editors (VSCode, Cursor) — without it, the CLI thinks the editor closed instantly and proceeds before the user finished editing. We capture the full command string, not just the binary name.
+
+**Resolution order** (first match wins):
+
+1. `--editor=<cmd>` flag (highest priority)
+2. `CLEW_EDITOR` env var (tool-specific override)
+3. Global config file (`~/.config/clew/config.toml`)
+4. `$VISUAL` env var
+5. `$EDITOR` env var
+6. **Interactive PATH scan & prompt** (TTY only): scan for known editors (`code`, `cursor`, `nvim`, `vim`, `nano`, `helix`); prompt user to pick; save choice to global config
+7. **Typed error** if non-TTY and no source matched
+
+**TTY detection** via `std::io::IsTerminal`. Agents (no TTY) hit step 7 directly, get a typed `NoEditorConfigured` error, and proceed without hanging.
+
+**Editor launch failure** (e.g., the configured editor was uninstalled): typed `EditorLaunchFailed` error with a hint pointing to the config file. No auto-reprompt — masking real problems is worse than asking the user to fix the config once.
+
+**Lazy setup:** `clew init` does NOT prompt for editor. The first interactive command that needs an editor (e.g., `clew path`) triggers the prompt. Keeps `clew init` fast and noninteractive-friendly.
+
+---
+
+## Scaffolding milestone (first build)
+
+The first scaffolding pass delivers **"skeleton + frontmatter parser"**:
+
+- `cargo new` with all deps in `Cargo.toml`
+- Module structure exists with stubs (`unimplemented!()` or trivial placeholders)
+- One end-to-end smoke test: `clew --version` returns a version string
+- **`core/frontmatter.rs` fully implemented with unit tests** (the lynchpin — round-trip preservation of unknown fields, malformed input handling, edge cases)
+- `clew init` template files exist as placeholders (`src/templates/init_readme.md` with stub content)
+- All commands either don't exist yet or return `unimplemented!()` errors
+
+Why this scope:
+- "Skeleton + smoke test" alone leaves the next agent staring at empty modules.
+- "Skeleton + parser + first command" bundles too much for a single scaffolding task.
+- Frontmatter parser is the riskiest piece; doing it standalone gets it scrutinized as its own artifact.
+
+The next session picks up with `clew show` as a clean vertical slice on the foundation.
+
+---
+
+## Git integration
+
+### No auto-commits, ever
+
+Clew never invokes `git commit` on the user's behalf. Not on `clew done`, not on `clew abandon`, not on any other state transition. Reasons:
+
+- Agents need to chunk their work logically (one feature, one commit). Auto-commits create messy histories and strip the agent's ability to write a thoughtful summary.
+- A failing test or lint between Clew state changes shouldn't be hidden inside an auto-commit; the agent should see it and decide.
+- Clew owns *project state*, not *git workflow*. Mixing the two creates surprise and reduces the user's trust.
+
+The agent or human is always the one running `git commit`. Clew's CLI output makes this easy: `clew done` mutates the file (`git mv` to archive, etc.) and leaves the changes staged-or-unstaged for the user's normal commit flow.
+
+### Commit message convention (recommended, not enforced)
+
+Increments are referenced by `#NNNN` per the ID scheme. Commit messages should prefix the increment ID where applicable:
+
+```
+[#0042] add OAuth route handlers
+[#0042] fix token refresh edge case
+```
+
+This is documented in `.clew/README.md`'s "copy this into your AGENTS.md" section, not enforced by Clew itself. Convention earns adoption; enforcement creates friction.
+
+### Hooks: deferred
+
+A `prepare-commit-msg` hook that auto-prefixes `[#NNNN]` based on the active increment is **explicitly deferred** for v1. Two real concerns:
+
+- **Staleness risk:** the hook would need to know the active increment, but `relay.md` can lag the agent's actual focus (e.g., agent ran `clew start 0050` but hasn't relay'd yet — hook prepends the prior `#0042` and creates a wrong-tag bug that's hard to debug).
+- **Platform fragility:** `.git/hooks/` shell scripts are OS-dependent; `clew init` shipping a hook becomes a per-platform support burden.
+
+If, after real-world use, agents consistently fail to prefix commits in practice, revisit. A `clew commit "msg"` wrapper (cross-platform, explicit, no hook) would be cleaner than `.git/hooks/` if we ever need automation.
 
 ---
 
 ## Open questions / next decisions
 
-- Full CLI surface: command set, flags, output formats, exit codes.
-- Agent's expected workflow loop, codified.
-- The `.clew/README.md` template — how to teach the conventions in one short file.
-- `clew init` behavior — what does a new project's `.clew/` look like out of the box?
-- Git integration specifics: hooks? auto-commits? commit-message conventions linking commits to increments?
-- Distribution: cargo install? curl-to-bash? homebrew?
-- Whether to ship a relay-history archive or trust git fully.
+- Full CLI surface: flags, output formats — refine as commands are implemented.
+- Agent's expected workflow loop, codified into `.clew/README.md`.
+- The `.clew/README.md` template content — including the "copy this into your AGENTS.md" harness-integration section. Stub for scaffolding; iterate post-MVP.
+- Distribution: `cargo install`? curl-to-bash? homebrew? (Default to `cargo install` for v1; revisit later.)
+- Auto-clearing or auto-archiving `relay.md` on `clew done` — purely additive feature, defer until earned.
 - Whether/how to support a TUI later without changing the data model.

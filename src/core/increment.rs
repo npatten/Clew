@@ -76,14 +76,14 @@ mod clew_timestamp {
 
         if value.contains('.') {
             return Err(D::Error::custom(
-                "timestamp must use second precision; subseconds are not allowed",
+                "timestamp must use second precision; subseconds are not supported",
             ));
         }
 
         let parsed = DateTime::parse_from_rfc3339(&value).map_err(D::Error::custom)?;
         if parsed.timestamp_subsec_nanos() != 0 {
             return Err(D::Error::custom(
-                "timestamp must use second precision; subseconds are not allowed",
+                "timestamp must be whole-second UTC; leap seconds and subseconds are not supported",
             ));
         }
 

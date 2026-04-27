@@ -2,13 +2,17 @@ use crate::core::increment::Status;
 use crate::error::ClewError;
 use crate::storage::fs;
 use std::io::Write;
+use std::path::Path;
 
 pub fn run(query: &str) -> Result<(), ClewError> {
     let cwd = std::env::current_dir().map_err(ClewError::Io)?;
     let root = fs::find_clew_root(&cwd)?;
+    start(&root, query).map(|_| ())
+}
 
+pub fn start(root: &Path, query: &str) -> Result<u32, ClewError> {
     let transition = crate::commands::transition::apply(
-        &root,
+        root,
         query,
         &[Status::Backlog, Status::Todo],
         Status::InProgress,
@@ -26,5 +30,5 @@ pub fn run(query: &str) -> Result<(), ClewError> {
         )
         .map_err(ClewError::Io)?;
     }
-    Ok(())
+    Ok(transition.id)
 }

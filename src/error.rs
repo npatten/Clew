@@ -30,6 +30,9 @@ pub enum ClewError {
     #[error("cannot {action} archived increment #{id:04}; reopen it first")]
     ArchivedIncrement { action: &'static str, id: u32 },
 
+    #[error("no todo increments found")]
+    NoNextIncrement,
+
     #[error("io: {0}")]
     Io(#[from] std::io::Error),
 

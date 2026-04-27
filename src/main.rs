@@ -13,6 +13,7 @@ fn main() -> ExitCode {
                 | clew::ClewError::InvalidStatusFilter(_)
                 | clew::ClewError::EmptyReason
                 | clew::ClewError::ArchivedIncrement { .. }
+                | clew::ClewError::NoNextIncrement
                 | clew::ClewError::Unimplemented => ExitCode::from(1),
                 clew::ClewError::Io(_) | clew::ClewError::Frontmatter(_) => ExitCode::from(2),
             }

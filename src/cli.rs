@@ -89,7 +89,7 @@ impl Cli {
                 crate::commands::abandon::run(&id, reason.as_deref())
             }
             Some(Command::Reopen { id }) => crate::commands::reopen::run(&id),
-            Some(Command::Next { .. }) => crate::commands::next::run(),
+            Some(Command::Next { start }) => crate::commands::next::run(start),
             Some(_) => Err(ClewError::Unimplemented),
         }
     }

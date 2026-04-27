@@ -1,33 +1,35 @@
 ---
-topic: Clew CLI — block/unblock shipped; next is next
-updated_at: 2026-04-27T17:07:08Z
+topic: Clew CLI — next implemented; next is path/editor or lint
+updated_at: 2026-04-27T17:44:00Z
 ---
 
-# Relay: Clew CLI — block/unblock shipped; next is next
+# Relay: Clew CLI — next implemented; next is path/editor or lint
 
 ## Status
 
-`clew block <id-or-slug> "reason"` and `clew unblock <id-or-slug>` are shipped. `AGENTS.md` now makes relay updates part of the milestone close protocol: run the quality gate once, update `relay.md`, commit work and relay together, then report only from a clean tree.
+`clew next` is implemented as the next vertical slice. It selects the first valid `#NNNN` reference from `.clew/path.md` when present, otherwise falls back to the oldest active `todo` increment by `created_at`; `--start` transitions the selected increment to `in_progress` using the same start behavior.
 
 ## Just finished
 
-- `5f2d133` implemented block/unblock: resolves ID or slug, mutates only `blocked_reason`, bumps `updated_at` on real writes, preserves body/unknown frontmatter, keeps stdout empty, and prints status/warnings to stderr.
-- Added explicit policy: block/unblock only apply to active, non-terminal increments. Archived increments are rejected with “reopen it first”; unarchived `done`/`abandoned` drift is rejected as an invalid transition.
-- Added integration coverage for block reason quoting with `#`, slug lookup, empty reason rejection, terminal/archived rejection, no-op unblock warning without timestamp bump, and preservation behavior.
-- Reviewer subagent found no blockers.
-- Updated `AGENTS.md` relay discipline so future agents commit the relay with the completed work instead of as an afterthought.
-- Trimmed `AGENTS.md` (~30% fewer tokens): collapsed software-dev intro, dropped duplicate `Commands` block, tightened quality-gate rules, consolidated relay discipline into one section. Co-author rule now lists Claude/Codex with a `Clankers:` header. Milestone close protocol gained an explicit user-approval gate before commit.
-- Removed the duplicate `### Discipline` subsection from `hammock-thinking/crew-plan.md` (Relay format) — discipline now lives only in `AGENTS.md`; the plan owns format/shape.
+- Implemented `src/commands/next.rs`: root discovery, path-first selection, oldest-todo fallback, pipeable stdout (`NNNN\n`), and `--start` support.
+- Wired `src/cli.rs` so `Command::Next { start }` passes the flag instead of ignoring it.
+- Extracted reusable `start::start(&Path, query) -> u32` so `next --start` shares transition logic and warnings with `clew start`.
+- Added `core::path::references()` for permissive `#NNNN` extraction from `path.md`.
+- Added `ClewError::NoNextIncrement` for the empty-queue case.
+- Added integration coverage for path priority, oldest-todo fallback, `next --start`, no-todo error, and stale path reference error.
 
 ## Next action
 
-Implement `clew next` as the next vertical slice. `src/commands/next.rs` currently returns `Unimplemented`, and `src/cli.rs` currently ignores the `--start` flag by routing `Some(Command::Next { .. })` to `next::run()`. Start by changing the command signature to accept `start: bool`, then implement path-first resolution from `.clew/path.md`; if path is empty, choose the oldest active `todo` by `created_at`. For `--start`, reuse the same transition behavior as `clew start` after selecting the increment.
+Ask the user to review the `clew next` behavior/output choice before commit, especially the decision that stdout is only the selected zero-padded ID (`0001`) rather than `#0001-slug` or full file content. If approved, run the full quality gate again after this relay update, then commit the code changes and `relay.md` together.
 
 ## Context worth carrying
 
-- Stable commits now: `5f2d133` (block/unblock), `9f487b9` (relay after reopen), `7ae5ed9` (reopen drift tests), `27200ae` (`clew reopen`), `4e20538` (allow abandon without reason), `7cc9f2a` (abandon review fixes), `149178f` (`clew abandon`), `2f7c58b` (done cleanup), `1431a23` (`clew done`).
-- `block` trims reasons and rejects empty/whitespace-only input via `ClewError::EmptyReason`.
-- `unblock` is idempotent for active non-terminal increments: if already unblocked, it warns and does not rewrite or bump `updated_at`.
-- The blockability helper lives in `src/commands/block.rs` and is reused by `unblock`; it rejects archived files before terminal statuses.
-- `fs::resolve()` still searches `.clew/increments/` before `.clew/archive/`. A future hardening pass should detect ambiguous duplicate active/archive matches instead of silently shadowing archive entries.
-- Full quality gate before the next commit: `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`; then update `relay.md` and commit both together.
+- `clew next --start` prints the selected ID to stdout and `Started #NNNN` to stderr; this keeps stdout pipeable while preserving existing `start` UX.
+- Path selection currently requires the referenced increment to be active and `status: todo`; archived refs return `ArchivedIncrement { action: "select" }`, and non-`todo` refs return `InvalidTransition { to: "next" }`. This is stricter than silently skipping path drift.
+- Fallback ignores `backlog`, `in_progress`, terminal statuses, and archived files; ties on `created_at` break by filename ID.
+- `path::references()` mirrors the existing path parser style: permissive and simple, first valid `#NNNN` per line.
+- Quality gate already passed before this relay update: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`. Re-run all three before committing because `relay.md` changed afterward.
+
+## Open questions
+
+- [Decide] Is `clew next` stdout as `NNNN` the desired long-term agent-facing API, or should it output canonical `#NNNN-slug` / full show content?

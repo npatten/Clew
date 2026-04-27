@@ -1577,3 +1577,133 @@ fn reopen_preserves_unknown_fields_and_body() {
     assert!(body.contains("# Title"));
     assert!(body.contains("- [x] One"));
 }
+
+// ---------------------------------------------------------------------------
+// `clew next`
+// ---------------------------------------------------------------------------
+
+fn fixture_with_created_at(id: u32, slug: &str, status: &str, created_at: &str) -> String {
+    format!(
+        "---\nid: {id}\nstatus: {status}\ncreated_at: {created_at}\nupdated_at: 2026-04-20T10:00:00Z\n---\n# {slug}\n"
+    )
+}
+
+#[test]
+fn next_returns_first_path_reference() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-oldest.md",
+        &fixture_with_created_at(1, "oldest", "todo", "2026-04-20T10:00:00Z"),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0002-priority.md",
+        &fixture_with_created_at(2, "priority", "todo", "2026-04-21T10:00:00Z"),
+    );
+    temp.child(".clew/path.md")
+        .write_str("# Path\n\nnotes are ignored\n- #0002-priority\n- #0001-oldest\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("next")
+        .assert()
+        .success()
+        .stdout("0002\n")
+        .stderr("");
+}
+
+#[test]
+fn next_falls_back_to_oldest_todo_when_path_is_empty() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-backlog.md",
+        &fixture_with_created_at(1, "backlog", "backlog", "2026-04-19T10:00:00Z"),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0002-newer.md",
+        &fixture_with_created_at(2, "newer", "todo", "2026-04-21T10:00:00Z"),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0003-older.md",
+        &fixture_with_created_at(3, "older", "todo", "2026-04-20T10:00:00Z"),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("next")
+        .assert()
+        .success()
+        .stdout("0003\n");
+}
+
+#[test]
+fn next_start_marks_selected_increment_in_progress() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with_created_at(1, "a", "todo", "2026-04-20T10:00:00Z"),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["next", "--start"])
+        .assert()
+        .success()
+        .stdout("0001\n")
+        .stderr(contains("Started #0001"));
+
+    let body = read_at(&temp, ".clew/increments/0001-a.md");
+    assert!(body.contains("status: in_progress"));
+}
+
+#[test]
+fn next_errors_when_no_todo_exists() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-backlog.md",
+        &fixture_with_created_at(1, "backlog", "backlog", "2026-04-20T10:00:00Z"),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("next")
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains("no todo increments found"));
+}
+
+#[test]
+fn next_errors_on_stale_path_reference() {
+    let temp = empty_project();
+    temp.child(".clew/path.md")
+        .write_str("# Path\n\n- #0009-missing\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("next")
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains("increment not found: 9"));
+}

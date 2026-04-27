@@ -1,5 +1,24 @@
 use std::collections::BTreeMap;
 
+/// Extract `#NNNN` references from a path.md document in document order.
+///
+/// The parser is permissive by design: it ignores prose and malformed hashes,
+/// and returns every well-formed four-digit reference it sees.
+pub fn references(text: &str) -> Vec<u32> {
+    text.lines().filter_map(reference_in_line).collect()
+}
+
+fn reference_in_line(line: &str) -> Option<u32> {
+    let hash = line.find('#')?;
+    let id_start = hash + 1;
+    let id_end = id_start + 4;
+    let id_text = line.get(id_start..id_end)?;
+    if !id_text.chars().all(|c| c.is_ascii_digit()) {
+        return None;
+    }
+    id_text.parse().ok()
+}
+
 /// Remove entries for `id` from a path.md document.
 ///
 /// The parser is intentionally permissive: if a line contains a `#NNNN`
@@ -67,6 +86,12 @@ fn normalize_line(line: &str, slugs_by_id: &BTreeMap<u32, String>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn references_extracts_ids_and_ignores_prose() {
+        let input = "# Path\n\nnotes\n- #0002-b\n- not #abcd\n- #0042\n";
+        assert_eq!(references(input), vec![2, 42]);
+    }
 
     #[test]
     fn remove_drops_matching_reference_lines() {

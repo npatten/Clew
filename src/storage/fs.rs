@@ -24,9 +24,23 @@ pub fn find_clew_root(start: &Path) -> Result<PathBuf, ClewError> {
 /// - the leading 4-digit ID equals the parsed integer form of the query, or
 /// - the slug portion (filename without `NNNN-` prefix and `.md` suffix) equals the query.
 pub fn resolve(root: &Path, query: &str) -> Result<PathBuf, ClewError> {
-    let id_query: Option<u32> = query.parse().ok();
-    let slug_query = query;
+    if let Ok(qid) = query.parse() {
+        if let Some(path) = find_matching(root, |id, _slug| id == qid)? {
+            return Ok(path);
+        }
+    }
 
+    if let Some(path) = find_matching(root, |_id, slug| slug == query)? {
+        return Ok(path);
+    }
+
+    Err(ClewError::NotFound(query.to_string()))
+}
+
+fn find_matching<F>(root: &Path, mut matches: F) -> Result<Option<PathBuf>, ClewError>
+where
+    F: FnMut(u32, &str) -> bool,
+{
     for subdir in [INCREMENTS_SUBDIR, ARCHIVE_SUBDIR] {
         let dir = root.join(CLEW_DIR).join(subdir);
         let entries = match std::fs::read_dir(&dir) {
@@ -45,21 +59,16 @@ pub fn resolve(root: &Path, query: &str) -> Result<PathBuf, ClewError> {
                 Some(s) => s,
                 None => continue,
             };
-            let Some((id_part, slug_part)) = split_filename(stem) else {
+            let Some((id, slug)) = split_filename(stem) else {
                 continue;
             };
-            if let Some(qid) = id_query {
-                if id_part == qid {
-                    return Ok(path);
-                }
-            }
-            if slug_part == slug_query {
-                return Ok(path);
+            if matches(id, slug) {
+                return Ok(Some(path));
             }
         }
     }
 
-    Err(ClewError::NotFound(query.to_string()))
+    Ok(None)
 }
 
 /// Split `0042-add-oauth-routes` into `(42, "add-oauth-routes")`.
@@ -98,5 +107,28 @@ mod tests {
         assert_eq!(split_filename("00042-foo"), None);
         assert_eq!(split_filename("noprefix"), None);
         assert_eq!(split_filename("abcd-foo"), None);
+    }
+
+    #[test]
+    fn resolve_prioritizes_numeric_id_over_numeric_slug() {
+        let temp = assert_fs::TempDir::new().unwrap();
+        std::fs::create_dir_all(temp.path().join(".clew/increments")).unwrap();
+        std::fs::write(
+            temp.path().join(".clew/increments/0001-42.md"),
+            "slug match",
+        )
+        .unwrap();
+        std::fs::write(
+            temp.path().join(".clew/increments/0042-real.md"),
+            "id match",
+        )
+        .unwrap();
+
+        let resolved = resolve(temp.path(), "42").unwrap();
+
+        assert_eq!(
+            resolved.file_name().and_then(|s| s.to_str()),
+            Some("0042-real.md")
+        );
     }
 }

@@ -26,7 +26,7 @@ You are the principal engineer. Guide the process, dispatch sub-agents in parall
 - One feature at a time; logical chunks that make sense together
 - When a stable point is reached for a logical chunk of work, run tests and linting, if everything is stable, commit.
 - ONLY commit files YOU changed as part of the current chunk of work.
-- Always credit the agent as co-author on commits using `Clankers` (generic name for coding agents) — e.g., `Co-Authored-By: Clankers <noreply@anthropic.com>`
+- Always credit the agent as co-author on commits using `Codex` — e.g., `Co-Authored-By: Codex <noreply@openai.com>`
 
 ## Software development
 

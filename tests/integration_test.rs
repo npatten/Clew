@@ -822,6 +822,157 @@ fn new_output_is_pipeable_to_show() {
 }
 
 // ---------------------------------------------------------------------------
+// `clew block` / `clew unblock`
+// ---------------------------------------------------------------------------
+
+#[test]
+fn block_sets_reason_and_bumps_updated_at() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "todo", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["block", "1", "waiting on #0039"])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr(contains("Blocked #0001"));
+
+    let body = read_at(&temp, ".clew/increments/0001-a.md");
+    assert!(body.contains("status: todo"));
+    assert!(body.contains("blocked_reason: 'waiting on #0039'"));
+    assert!(body.contains("created_at: 2026-04-20T10:00:00Z"));
+    assert!(!body.contains("updated_at: 2026-04-20T10:00:00Z"));
+}
+
+#[test]
+fn block_accepts_slug_and_preserves_unknown_fields_and_body() {
+    let temp = empty_project();
+    let original = "---\nid: 1\nstatus: in_progress\ncreated_at: 2026-04-20T10:00:00Z\nupdated_at: 2026-04-20T10:00:00Z\npriority: high\n---\n\n# Title\n\n- [ ] One\n";
+    temp.child(".clew/increments/0001-title.md")
+        .write_str(original)
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["block", "title", "needs design"])
+        .assert()
+        .success();
+
+    let body = read_at(&temp, ".clew/increments/0001-title.md");
+    assert!(body.contains("blocked_reason: needs design"));
+    assert!(body.contains("priority: high"));
+    assert!(body.contains("# Title"));
+    assert!(body.contains("- [ ] One"));
+}
+
+#[test]
+fn block_rejects_empty_reason() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "todo", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["block", "1", "   "])
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains("reason must not be empty"));
+}
+
+#[test]
+fn block_rejects_terminal_and_archived_increments() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-done-active.md",
+        &fixture_with(1, "done-active", "done", None),
+    );
+    write_increment(
+        &temp,
+        "archive",
+        "0002-archived.md",
+        &fixture_with(2, "archived", "todo", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["block", "1", "waiting"])
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains("invalid status transition"));
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["block", "2", "waiting"])
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains("cannot block archived increment #0002"));
+}
+
+#[test]
+fn unblock_removes_reason_and_bumps_updated_at() {
+    let temp = empty_project();
+    temp.child(".clew/increments/0001-a.md")
+        .write_str("---\nid: 1\nstatus: in_progress\nblocked_reason: waiting\ncreated_at: 2026-04-20T10:00:00Z\nupdated_at: 2026-04-20T10:00:00Z\n---\n# a\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["unblock", "1"])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr(contains("Unblocked #0001"));
+
+    let body = read_at(&temp, ".clew/increments/0001-a.md");
+    assert!(!body.contains("blocked_reason:"));
+    assert!(!body.contains("updated_at: 2026-04-20T10:00:00Z"));
+}
+
+#[test]
+fn unblock_already_unblocked_warns_without_bumping_timestamp() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "todo", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["unblock", "a"])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr(contains("warning: #0001 is already unblocked"));
+
+    let body = read_at(&temp, ".clew/increments/0001-a.md");
+    assert!(body.contains("updated_at: 2026-04-20T10:00:00Z"));
+}
+
+// ---------------------------------------------------------------------------
 // `clew done`
 // ---------------------------------------------------------------------------
 

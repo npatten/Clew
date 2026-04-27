@@ -24,6 +24,12 @@ pub enum ClewError {
     )]
     InvalidStatusFilter(String),
 
+    #[error("reason must not be empty")]
+    EmptyReason,
+
+    #[error("cannot {action} archived increment #{id:04}; reopen it first")]
+    ArchivedIncrement { action: &'static str, id: u32 },
+
     #[error("io: {0}")]
     Io(#[from] std::io::Error),
 

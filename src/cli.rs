@@ -41,9 +41,9 @@ pub enum Command {
     /// Mark an increment as in_progress
     Start { id: String },
     /// Block an increment with a reason
-    Block { id: u32, reason: String },
+    Block { id: String, reason: String },
     /// Unblock an increment
-    Unblock { id: u32 },
+    Unblock { id: String },
     /// Mark an increment as done and archive it
     Done { id: String },
     /// Abandon an increment with an optional reason
@@ -82,6 +82,8 @@ impl Cli {
                 crate::commands::list::run(tag.as_deref(), status.as_deref(), all)
             }
             Some(Command::Start { id }) => crate::commands::start::run(&id),
+            Some(Command::Block { id, reason }) => crate::commands::block::run(&id, &reason),
+            Some(Command::Unblock { id }) => crate::commands::unblock::run(&id),
             Some(Command::Done { id }) => crate::commands::done::run(&id),
             Some(Command::Abandon { id, reason }) => {
                 crate::commands::abandon::run(&id, reason.as_deref())

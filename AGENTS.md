@@ -30,6 +30,7 @@ You are the principal engineer — guide the process, use sub-agents in parallel
 
 - One feature at a time; logical chunks that make sense together
 - ONLY commit files YOU changed as part of the current chunk
+- Do not prefix commit messages with Clew increment refs until this repo has been bootstrapped with real `.clew/` increments. Use plain messages for now.
 - Credit your clanker as co-author. Always prefix the co-author line(s) with a `Clankers:` header, e.g.:
   - `Clankers:`
   - `Co-Authored-By: Claude <noreply@anthropic.com>`

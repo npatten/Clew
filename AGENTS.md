@@ -24,9 +24,32 @@ You are the principal engineer. Guide the process, dispatch sub-agents in parall
 ## Git
 
 - One feature at a time; logical chunks that make sense together
-- When a stable point is reached for a logical chunk of work, run tests and linting, if everything is stable, commit.
+- When a stable point is reached for a logical chunk of work, run the full quality gate, update `relay.md`, then commit the work and relay together.
 - ONLY commit files YOU changed as part of the current chunk of work.
 - Always credit the agent as co-author on commits using `Codex` — e.g., `Co-Authored-By: Codex <noreply@openai.com>`
+
+## Relay discipline
+
+`relay.md` is the session handoff. Keep it current whenever you finish a logical chunk of work, before handing off, and before reporting work as complete.
+
+Milestone close protocol:
+
+1. Finish the code/docs chunk.
+2. Run the full quality gate.
+3. Update `relay.md` to reflect the just-finished work and the next action.
+4. Commit the work and `relay.md` together.
+5. Confirm `git status --short` is clean before reporting success.
+
+Do not claim a milestone is complete unless `relay.md` reflects the latest committed state.
+
+Relay writing rules:
+
+- Keep it short.
+- Omit empty sections.
+- Don’t restate the whole plan.
+- Prefer exact file paths, command names, and relevant commit hashes when already available.
+- `Next action` should be the single most concrete next move, not a broad task list.
+- Capture decisions and gotchas that would cost the next agent time to rediscover.
 
 ## Software development
 
@@ -55,7 +78,7 @@ cargo fmt            # format
 
 ## Quality gates
 
-Run the full check suite at every milestone. A **milestone** is any of: finishing a logical chunk of work, before a commit, before writing a relay, before handing off, or whenever you're about to claim something works.
+Run the full check suite at every milestone. A **milestone** is any of: finishing a logical chunk of work, before committing work, before handing off, or whenever you're about to claim something works.
 
 Run all three, in this order:
 
@@ -68,7 +91,7 @@ cargo test                              # all tests pass
 Rules:
 
 - **Don't skip.** If you only changed docs, still run them — it costs seconds and catches surprises.
-- **All three must be green** before you commit, write a relay, or report success to the user. "Tests pass" is not enough; clippy and fmt count.
+- **All three must be green** before you commit work or report success to the user. "Tests pass" is not enough; clippy and fmt count.
 - **Failures are stop-the-line.** Fix the root cause; do not `#[allow(...)]`, `--no-verify`, or reformat-then-ignore unless the user explicitly approves.
 - **Re-run after every fix** until all three pass cleanly in a single sweep — partial green from stale runs doesn't count.
 - If a tool is unavailable in the environment (e.g., `cargo` missing from PATH), say so explicitly rather than silently skipping.

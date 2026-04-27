@@ -1,13 +1,13 @@
 ---
 topic: Clew CLI — block/unblock shipped; next is next
-updated_at: 2026-04-27T16:36:59Z
+updated_at: 2026-04-27T17:07:08Z
 ---
 
 # Relay: Clew CLI — block/unblock shipped; next is next
 
 ## Status
 
-`clew block <id-or-slug> "reason"` and `clew unblock <id-or-slug>` are shipped. Quality gate green after the latest code commit and again before this relay: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`.
+`clew block <id-or-slug> "reason"` and `clew unblock <id-or-slug>` are shipped. `AGENTS.md` now makes relay updates part of the milestone close protocol: run the quality gate once, update `relay.md`, commit work and relay together, then report only from a clean tree.
 
 ## Just finished
 
@@ -15,6 +15,7 @@ updated_at: 2026-04-27T16:36:59Z
 - Added explicit policy: block/unblock only apply to active, non-terminal increments. Archived increments are rejected with “reopen it first”; unarchived `done`/`abandoned` drift is rejected as an invalid transition.
 - Added integration coverage for block reason quoting with `#`, slug lookup, empty reason rejection, terminal/archived rejection, no-op unblock warning without timestamp bump, and preservation behavior.
 - Reviewer subagent found no blockers.
+- Updated `AGENTS.md` relay discipline so future agents commit the relay with the completed work instead of as an afterthought.
 
 ## Next action
 
@@ -27,4 +28,4 @@ Implement `clew next` as the next vertical slice. `src/commands/next.rs` current
 - `unblock` is idempotent for active non-terminal increments: if already unblocked, it warns and does not rewrite or bump `updated_at`.
 - The blockability helper lives in `src/commands/block.rs` and is reused by `unblock`; it rejects archived files before terminal statuses.
 - `fs::resolve()` still searches `.clew/increments/` before `.clew/archive/`. A future hardening pass should detect ambiguous duplicate active/archive matches instead of silently shadowing archive entries.
-- Full quality gate before the next commit/relay: `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`.
+- Full quality gate before the next commit: `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`; then update `relay.md` and commit both together.

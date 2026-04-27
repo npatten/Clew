@@ -1,29 +1,30 @@
 ---
-topic: Clew CLI — reopen shipped; block/unblock is next
-updated_at: 2026-04-27T16:12:35Z
+topic: Clew CLI — block/unblock shipped; next is next
+updated_at: 2026-04-27T16:36:59Z
 ---
 
-# Relay: Clew CLI — reopen shipped; block/unblock is next
+# Relay: Clew CLI — block/unblock shipped; next is next
 
 ## Status
 
-`clew reopen <id-or-slug>` is shipped and review follow-ups are complete. Quality gate green after the latest commit: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`.
+`clew block <id-or-slug> "reason"` and `clew unblock <id-or-slug>` are shipped. Quality gate green after the latest code commit and again before this relay: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`.
 
 ## Just finished
 
-- `27200ae` implemented `clew reopen <id-or-slug>`: resolves ID or slug, allows `done|abandoned → todo`, moves archived files back to `.clew/increments/`, bumps `updated_at` on real transitions, preserves body/unknown frontmatter/`abandoned_reason`, and keeps stdout empty with status/warnings on stderr.
-- Added `fs::unarchive_increment` and refactored archive/unarchive movement through a shared helper. The helper now checks destination existence before `rename` so archive/unarchive cannot overwrite a colliding file.
-- Review found no blockers. `7ae5ed9` added explicit regression coverage for unarchived terminal drift (`done`/`abandoned` files already in `.clew/increments/`) being reopened to `todo`.
+- `5f2d133` implemented block/unblock: resolves ID or slug, mutates only `blocked_reason`, bumps `updated_at` on real writes, preserves body/unknown frontmatter, keeps stdout empty, and prints status/warnings to stderr.
+- Added explicit policy: block/unblock only apply to active, non-terminal increments. Archived increments are rejected with “reopen it first”; unarchived `done`/`abandoned` drift is rejected as an invalid transition.
+- Added integration coverage for block reason quoting with `#`, slug lookup, empty reason rejection, terminal/archived rejection, no-op unblock warning without timestamp bump, and preservation behavior.
+- Reviewer subagent found no blockers.
 
 ## Next action
 
-Implement `clew block <id-or-slug> "reason"` and `clew unblock <id-or-slug>` as the next vertical slice. Start by changing the CLI args from `u32` to `String`, then add command modules that resolve via `fs::resolve`, mutate only `blocked_reason`, bump `updated_at`, preserve body/unknown frontmatter, keep stdout empty, and print status to stderr. Blocking should work for active increments; decide deliberately whether terminal archived increments should be rejected or allowed before coding.
+Implement `clew next` as the next vertical slice. `src/commands/next.rs` currently returns `Unimplemented`, and `src/cli.rs` currently ignores the `--start` flag by routing `Some(Command::Next { .. })` to `next::run()`. Start by changing the command signature to accept `start: bool`, then implement path-first resolution from `.clew/path.md`; if path is empty, choose the oldest active `todo` by `created_at`. For `--start`, reuse the same transition behavior as `clew start` after selecting the increment.
 
 ## Context worth carrying
 
-- Stable commits now: `7ae5ed9` (reopen drift tests), `27200ae` (`clew reopen`), `4e20538` (allow abandon without reason), `7cc9f2a` (abandon review fixes), `149178f` (`clew abandon`), `2f7c58b` (done cleanup), `1431a23` (`clew done`).
-- `transition::apply_with` intentionally does not mutate on tolerated self-loops. This preserves terminal side-effect reconciliation without bumping timestamps or rewriting frontmatter.
-- `reopen` currently does not touch `path.md`. That matches the plan: reopen moves to `todo`, but priority/path placement remains a human/agent decision.
-- Existing resolver searches `.clew/increments/` before `.clew/archive/`. A future hardening pass should detect ambiguous duplicate active/archive matches instead of silently shadowing archive entries.
-- Transition side-effect ordering still favors completing file moves after status writes. If stronger consistency is needed later, introduce a transition+move helper with preflight/rollback rather than fixing one command ad hoc.
+- Stable commits now: `5f2d133` (block/unblock), `9f487b9` (relay after reopen), `7ae5ed9` (reopen drift tests), `27200ae` (`clew reopen`), `4e20538` (allow abandon without reason), `7cc9f2a` (abandon review fixes), `149178f` (`clew abandon`), `2f7c58b` (done cleanup), `1431a23` (`clew done`).
+- `block` trims reasons and rejects empty/whitespace-only input via `ClewError::EmptyReason`.
+- `unblock` is idempotent for active non-terminal increments: if already unblocked, it warns and does not rewrite or bump `updated_at`.
+- The blockability helper lives in `src/commands/block.rs` and is reused by `unblock`; it rejects archived files before terminal statuses.
+- `fs::resolve()` still searches `.clew/increments/` before `.clew/archive/`. A future hardening pass should detect ambiguous duplicate active/archive matches instead of silently shadowing archive entries.
 - Full quality gate before the next commit/relay: `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`.

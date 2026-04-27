@@ -57,9 +57,16 @@ cargo test
 - Re-run after every fix until all three pass in a single sweep.
 - If `cargo` is unavailable, say so explicitly rather than silently skipping.
 
-### Relay discipline
+### Plan & Relay discipline
 
-`relay.md` is the session handoff (format spec: `crew-plan.md` → Relay format). Keep it current with every commit.
+`crew-plan.md` is the load-bearing living spec. It carries a `## Revisions` log and a `last_major_update` frontmatter field for human reviewers picking it up async.
+
+- **When you make a meaningful design edit to `crew-plan.md`** (a pivot, a new decision, a deferral, a structural change), add one line to `## Revisions` and bump `last_major_update` to today's date.
+- **Skip both for typo fixes, wording polish, formatting tweaks** — the threshold is "would a returning reviewer want to know this changed?"
+- **Revisions entries describe the _why_, not the diff.** "Switched relay to single rolling file (per-increment didn't justify the scale)" — not "edited section 4."
+- **Keep ~5 entries.** Prune the oldest when adding new ones; git history is the long memory.
+
+`relay.md` is the session handoff (format guidance in: `crew-plan.md` → Relay format). Keep it current with every commit.
 
 **Milestone close protocol:**
 

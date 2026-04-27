@@ -1,6 +1,18 @@
+---
+last_major_update: 2026-04-27
+---
+
 # Clew — Design Plan
 
 > **Status: living design doc.** Active iteration; nothing here is set in stone. If something looks wrong, push back. Companion notes: `hammock-thinking/DDD/CLI-design-notes.md` (interaction-pattern sketches).
+
+## Revisions
+
+- 2026-04-27 — relay's "Next action" → "Next milestone": handoffs should point at the next product chunk, not process mechanics (review, gate, commit).
+- 2026-04-27 — relay-writing discipline moved out of this plan into `AGENTS.md`; plan retains only the relay's format/shape.
+- 2026-04-27 — direct frontmatter edit is first-class; `clew promote` deferred (pure-metadata transitions have no side effects to manage). Self-loop tolerance added for `done`/`abandon`/`reopen` so hand-edit-then-CLI flows complete cleanly.
+
+_Older entries pruned; use `git log hammock-thinking/crew-plan.md` for full history._
 
 ## What Clew is
 
@@ -382,7 +394,7 @@ A typical session:
 - `clew new "<title>"` — creates in `backlog` (or `todo` with `--ready`). Optional `--parent <id>` flag to link to a parent increment.
 - `clew show <id>` — accepts numeric ID or slug.
 - `clew list [--tag X] [--status Y] [--all]` — filtered listing. Default: in-flight items only. `--all` includes archived.
-- `clew promote <id>` — *deferred.* Direct frontmatter edit (`status: backlog` → `status: todo`) suffices; the transition has no side effects. Revisit if MVP self-hosting reveals friction.
+- `clew promote <id>` — _deferred._ Direct frontmatter edit (`status: backlog` → `status: todo`) suffices; the transition has no side effects. Revisit if MVP self-hosting reveals friction.
 - `clew start <id>` — → in_progress.
 - `clew block <id> "reason"` / `clew unblock <id>` — toggle blocked flag.
 - `clew done <id>` — → done, archive, remove from path. Does NOT touch `relay.md`.
@@ -401,21 +413,21 @@ A typical session:
 
 ### Stack
 
-| Concern | Crate | Notes |
-|---|---|---|
-| CLI parsing | `clap` | `default-features = false, features = ["derive", "std", "help"]` — POSIX-correct, agent-friendly, stripped of color/suggest bloat |
-| YAML | `yaml_serde` (official YAML org fork of archived `serde_yaml`) + `serde` | Manual `---` splitter for frontmatter; pipe the YAML chunk to `yaml_serde` |
-| Errors (lib) | `thiserror` | Typed errors in `lib.rs`, `core/`, `storage/`, `commands/` |
-| Errors (bin) | `anyhow` | Loose chaining at the `main.rs` boundary |
-| Datetime | `chrono` | `default-features = false, features = ["clock", "serde"]` — RFC 3339 UTC with second precision |
-| Slug | `slug` (wraps `deunicode`) | Plus 50-char truncation on top |
-| User config paths | `directories` | Cross-platform (`~/.config/clew/` on Linux, `~/Library/Application Support/clew/` on macOS, `%APPDATA%\clew\` on Windows) |
-| TTY detection | `std::io::IsTerminal` | Stdlib; no extra dep |
-| Test: CLI invocation | `assert_cmd` | Runs the compiled binary; stdout/stderr separately assertable |
-| Test: filesystem isolation | `assert_fs` | Self-destructing tempdirs per test |
-| Test: snapshot | `insta` | Snapshots of generated markdown+frontmatter (catches format drift; this output IS our agent-facing API) |
-| Test: parameterized | `rstest` | Many similar inputs to one parser/validator |
-| Test: predicates | `predicates` | Composable assertions for `assert_cmd` / `assert_fs` |
+| Concern                    | Crate                                                                    | Notes                                                                                                                             |
+| -------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| CLI parsing                | `clap`                                                                   | `default-features = false, features = ["derive", "std", "help"]` — POSIX-correct, agent-friendly, stripped of color/suggest bloat |
+| YAML                       | `yaml_serde` (official YAML org fork of archived `serde_yaml`) + `serde` | Manual `---` splitter for frontmatter; pipe the YAML chunk to `yaml_serde`                                                        |
+| Errors (lib)               | `thiserror`                                                              | Typed errors in `lib.rs`, `core/`, `storage/`, `commands/`                                                                        |
+| Errors (bin)               | `anyhow`                                                                 | Loose chaining at the `main.rs` boundary                                                                                          |
+| Datetime                   | `chrono`                                                                 | `default-features = false, features = ["clock", "serde"]` — RFC 3339 UTC with second precision                                    |
+| Slug                       | `slug` (wraps `deunicode`)                                               | Plus 50-char truncation on top                                                                                                    |
+| User config paths          | `directories`                                                            | Cross-platform (`~/.config/clew/` on Linux, `~/Library/Application Support/clew/` on macOS, `%APPDATA%\clew\` on Windows)         |
+| TTY detection              | `std::io::IsTerminal`                                                    | Stdlib; no extra dep                                                                                                              |
+| Test: CLI invocation       | `assert_cmd`                                                             | Runs the compiled binary; stdout/stderr separately assertable                                                                     |
+| Test: filesystem isolation | `assert_fs`                                                              | Self-destructing tempdirs per test                                                                                                |
+| Test: snapshot             | `insta`                                                                  | Snapshots of generated markdown+frontmatter (catches format drift; this output IS our agent-facing API)                           |
+| Test: parameterized        | `rstest`                                                                 | Many similar inputs to one parser/validator                                                                                       |
+| Test: predicates           | `predicates`                                                             | Composable assertions for `assert_cmd` / `assert_fs`                                                                              |
 
 ### Project layout
 
@@ -476,10 +488,12 @@ struct Increment {
 ### Error model
 
 Layered:
+
 - **Library** (`thiserror`): typed variants like `NotFound(u32)`, `InvalidTransition { from, to }`, `SlugCollision(String)`, `Frontmatter(...)`, `Io(...)`. Integration tests can match on variants.
 - **Binary** (`anyhow`): `?` propagation in `main.rs` with `.context(...)` for user-facing display.
 
 **Exit codes:**
+
 - `0` — success
 - `1` — user error (not found, invalid transition, slug collision, dangling reference)
 - `2` — system error (I/O failure, frontmatter parse failure, internal bug)
@@ -535,6 +549,7 @@ The first scaffolding pass delivers **"skeleton + frontmatter parser"**:
 - All commands either don't exist yet or return `unimplemented!()` errors
 
 Why this scope:
+
 - "Skeleton + smoke test" alone leaves the next agent staring at empty modules.
 - "Skeleton + parser + first command" bundles too much for a single scaffolding task.
 - Frontmatter parser is the riskiest piece; doing it standalone gets it scrutinized as its own artifact.
@@ -551,7 +566,7 @@ Clew never invokes `git commit` on the user's behalf. Not on `clew done`, not on
 
 - Agents need to chunk their work logically (one feature, one commit). Auto-commits create messy histories and strip the agent's ability to write a thoughtful summary.
 - A failing test or lint between Clew state changes shouldn't be hidden inside an auto-commit; the agent should see it and decide.
-- Clew owns *project state*, not *git workflow*. Mixing the two creates surprise and reduces the user's trust.
+- Clew owns _project state_, not _git workflow_. Mixing the two creates surprise and reduces the user's trust.
 
 The agent or human is always the one running `git commit`. Clew's CLI output makes this easy: `clew done` mutates the file (`git mv` to archive, etc.) and leaves the changes staged-or-unstaged for the user's normal commit flow.
 

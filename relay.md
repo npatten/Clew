@@ -1,32 +1,29 @@
 ---
-topic: Clew CLI — abandon reason policy settled; reopen is next
-updated_at: 2026-04-27T15:45:00Z
+topic: Clew CLI — reopen shipped; block/unblock is next
+updated_at: 2026-04-27T16:12:35Z
 ---
 
-# Relay: Clew CLI — abandon reason policy settled, reopen is next
+# Relay: Clew CLI — reopen shipped; block/unblock is next
 
 ## Status
 
-`clew abandon <id-or-slug> [reason]` is shipped and review follow-ups are complete. Quality gate green before the latest code commit: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`.
+`clew reopen <id-or-slug>` is shipped and review follow-ups are complete. Quality gate green after the latest commit: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`.
 
 ## Just finished
 
-- Implemented `clew abandon` in `149178f`: accepts ID or slug, allows `backlog|todo|in_progress|done → abandoned`, bumps `updated_at`, preserves unknown frontmatter/body, archives the increment, removes it from `path.md`, keeps stdout empty, and prints status/warnings to stderr.
-- Updated agent co-author guidance in `AGENTS.md` and amended the relay commit to use `Co-Authored-By: Codex <noreply@openai.com>`.
-- Addressed review follow-ups:
-  - `7cc9f2a` added missing-reason warning behavior for hand-edited abandoned self-loops and regression coverage for archived `done → abandoned`.
-  - `4e20538` settled abandon reason policy: the reason positional is optional; omitted or whitespace-only reasons are accepted, no `abandoned_reason` is written, and the CLI warns `warning: #NNNN is abandoned without an abandoned_reason`.
+- `27200ae` implemented `clew reopen <id-or-slug>`: resolves ID or slug, allows `done|abandoned → todo`, moves archived files back to `.clew/increments/`, bumps `updated_at` on real transitions, preserves body/unknown frontmatter/`abandoned_reason`, and keeps stdout empty with status/warnings on stderr.
+- Added `fs::unarchive_increment` and refactored archive/unarchive movement through a shared helper. The helper now checks destination existence before `rename` so archive/unarchive cannot overwrite a colliding file.
+- Review found no blockers. `7ae5ed9` added explicit regression coverage for unarchived terminal drift (`done`/`abandoned` files already in `.clew/increments/`) being reopened to `todo`.
 
 ## Next action
 
-Implement `clew reopen <id-or-slug>` as the next vertical slice. It should resolve archive/increments, transition `done|abandoned → todo`, move archived files back to `.clew/increments/`, and bump `updated_at` on real transition. Decide self-loop behavior deliberately: `todo` already unarchived may be a successful no-op with warning if used to reconcile a hand-edit, but `start` should remain strict. Preserve `abandoned_reason` on reopen unless we explicitly revise the plan.
+Implement `clew block <id-or-slug> "reason"` and `clew unblock <id-or-slug>` as the next vertical slice. Start by changing the CLI args from `u32` to `String`, then add command modules that resolve via `fs::resolve`, mutate only `blocked_reason`, bump `updated_at`, preserve body/unknown frontmatter, keep stdout empty, and print status to stderr. Blocking should work for active increments; decide deliberately whether terminal archived increments should be rejected or allowed before coding.
 
 ## Context worth carrying
 
-- Stable commits now: `4e20538` (allow abandon without reason), `7cc9f2a` (abandon review fixes), `149178f` (`clew abandon`), `2f7c58b` (done cleanup), `1431a23` (`clew done`).
-- `transition::apply_with` intentionally does not mutate on tolerated self-loops. This preserves terminal self-loop behavior: complete file-move side effects without bumping timestamps or rewriting frontmatter.
-- `abandon` pre-reads the target to detect the specific self-loop/missing-reason warning. It does not backfill a reason on self-loop.
-- `abandon` mirrors `done` side-effect ordering: prepare path changes in memory, archive first, then write `path.md`. Archive correctness beats advisory path cleanup if a later write fails.
-- `fs::archive_increment` exists, but there is not yet a symmetric unarchive helper for `reopen`.
-- Transition commands still follow stdout=data, stderr=status/errors/warnings.
+- Stable commits now: `7ae5ed9` (reopen drift tests), `27200ae` (`clew reopen`), `4e20538` (allow abandon without reason), `7cc9f2a` (abandon review fixes), `149178f` (`clew abandon`), `2f7c58b` (done cleanup), `1431a23` (`clew done`).
+- `transition::apply_with` intentionally does not mutate on tolerated self-loops. This preserves terminal side-effect reconciliation without bumping timestamps or rewriting frontmatter.
+- `reopen` currently does not touch `path.md`. That matches the plan: reopen moves to `todo`, but priority/path placement remains a human/agent decision.
+- Existing resolver searches `.clew/increments/` before `.clew/archive/`. A future hardening pass should detect ambiguous duplicate active/archive matches instead of silently shadowing archive entries.
+- Transition side-effect ordering still favors completing file moves after status writes. If stronger consistency is needed later, introduce a transition+move helper with preflight/rollback rather than fixing one command ad hoc.
 - Full quality gate before the next commit/relay: `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`.

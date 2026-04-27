@@ -359,13 +359,6 @@ Includes file paths and approach. Not a task list — _the_ next thing.
 - Triggers explicit updates to the increment file.
 ```
 
-### Discipline
-
-- **Empty sections are omitted entirely.** Don't write "N/A." Token efficiency through silence.
-- **Prose where prose serves better, bullets where they don't.** "Next action" reads as one short paragraph, not a list.
-- **No restating the increment.** Tasks, acceptance criteria, scope live in the increment file; the relay points back.
-- **The relay summarizes; git logs detail.** Don't re-litigate every action.
-
 ### Path/relay relationship
 
 - `path.md` is **cross-project priority**: "across all the work, what's next?"

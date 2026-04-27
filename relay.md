@@ -16,6 +16,8 @@ updated_at: 2026-04-27T17:07:08Z
 - Added integration coverage for block reason quoting with `#`, slug lookup, empty reason rejection, terminal/archived rejection, no-op unblock warning without timestamp bump, and preservation behavior.
 - Reviewer subagent found no blockers.
 - Updated `AGENTS.md` relay discipline so future agents commit the relay with the completed work instead of as an afterthought.
+- Trimmed `AGENTS.md` (~30% fewer tokens): collapsed software-dev intro, dropped duplicate `Commands` block, tightened quality-gate rules, consolidated relay discipline into one section. Co-author rule now lists Claude/Codex with a `Clankers:` header. Milestone close protocol gained an explicit user-approval gate before commit.
+- Removed the duplicate `### Discipline` subsection from `hammock-thinking/crew-plan.md` (Relay format) — discipline now lives only in `AGENTS.md`; the plan owns format/shape.
 
 ## Next action
 

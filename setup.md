@@ -31,11 +31,10 @@ This is one session's worth of work. Do not scope-creep into implementing other 
 ### 1. Initialize the Rust project
 
 ```bash
-cargo new clew --bin
-cd clew
+cargo init --bin --name clew .
 ```
 
-You'll need both a binary target (`main.rs`) and a library target (`lib.rs`). After `cargo new`, add the lib by creating `src/lib.rs`. The binary should be a thin wrapper that calls `clew::run()`.
+You'll need both a binary target (`main.rs`) and a library target (`lib.rs`). After `cargo init`, add the lib by creating `src/lib.rs`. The binary should be a thin wrapper that calls `clew::run()`.
 
 ### 2. Configure `Cargo.toml`
 

@@ -37,6 +37,11 @@ While developing software you are the principal engineer, guide the process, mak
 - Prefer functional style, simple composable components
 - Keep the codebase tidy as you go; raise larger refactors with the user before starting
 
+## Resources
+
+- Full project plan: `hammock-thinking/crew-plan.md`
+- Hand off from previous agent session: `relay.md`
+
 ## Commands
 
 ```bash

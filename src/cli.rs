@@ -39,7 +39,7 @@ pub enum Command {
     /// Promote an increment from backlog to todo
     Promote { id: u32 },
     /// Mark an increment as in_progress
-    Start { id: u32 },
+    Start { id: String },
     /// Block an increment with a reason
     Block { id: u32, reason: String },
     /// Unblock an increment
@@ -81,7 +81,7 @@ impl Cli {
             Some(Command::List { tag, status, all }) => {
                 crate::commands::list::run(tag.as_deref(), status.as_deref(), all)
             }
-            Some(Command::Start { .. }) => crate::commands::start::run(),
+            Some(Command::Start { id }) => crate::commands::start::run(&id),
             Some(Command::Done { .. }) => crate::commands::done::run(),
             Some(Command::Next { .. }) => crate::commands::next::run(),
             Some(_) => Err(ClewError::Unimplemented),

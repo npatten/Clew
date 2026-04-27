@@ -603,6 +603,203 @@ fn list_outside_clew_project_errors() {
         .stderr(contains(".clew/"));
 }
 
+// ---------------------------------------------------------------------------
+// `clew start`
+// ---------------------------------------------------------------------------
+
+fn read_at(temp: &assert_fs::TempDir, rel: &str) -> String {
+    std::fs::read_to_string(temp.path().join(rel)).unwrap()
+}
+
+#[test]
+fn start_transitions_todo_to_in_progress() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "todo", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["start", "1"])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr(contains("Started #0001"));
+
+    let body = read_at(&temp, ".clew/increments/0001-a.md");
+    assert!(body.contains("status: in_progress"));
+}
+
+#[test]
+fn start_transitions_backlog_to_in_progress() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "backlog", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["start", "0001"])
+        .assert()
+        .success();
+
+    let body = read_at(&temp, ".clew/increments/0001-a.md");
+    assert!(body.contains("status: in_progress"));
+}
+
+#[test]
+fn start_accepts_slug() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-add-oauth.md",
+        &fixture_with(1, "add-oauth", "todo", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["start", "add-oauth"])
+        .assert()
+        .success();
+}
+
+#[test]
+fn start_in_progress_again_is_invalid_transition() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "in_progress", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["start", "1"])
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains("invalid status transition"))
+        .stderr(contains("in_progress"));
+}
+
+#[test]
+fn start_done_is_invalid_transition() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "done", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["start", "1"])
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains("invalid status transition"));
+}
+
+#[test]
+fn start_unknown_id_errors() {
+    let temp = empty_project();
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["start", "9999"])
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains("not found"));
+}
+
+#[test]
+fn start_warns_when_blocked() {
+    let temp = empty_project();
+    temp.child(".clew/increments/0001-a.md")
+        .write_str("---\nid: 1\nstatus: todo\nblocked_reason: \"waiting on #0039\"\ncreated_at: 2026-04-20T10:00:00Z\nupdated_at: 2026-04-20T10:00:00Z\n---\n# a\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["start", "1"])
+        .assert()
+        .success()
+        .stderr(contains("Started #0001"))
+        .stderr(contains("warning"))
+        .stderr(contains("blocked"))
+        .stderr(contains("waiting on #0039"));
+
+    let body = read_at(&temp, ".clew/increments/0001-a.md");
+    assert!(body.contains("status: in_progress"));
+    // Serializer canonicalizes `#`-bearing strings with single quotes; both
+    // are valid YAML — just assert the value survived.
+    assert!(body.contains("blocked_reason: 'waiting on #0039'"));
+}
+
+#[test]
+fn start_preserves_unknown_fields_and_body() {
+    let temp = empty_project();
+    let original = "---\nid: 1\nstatus: todo\ntags:\n- auth\n- p0\ncreated_at: 2026-04-20T10:00:00Z\nupdated_at: 2026-04-20T10:00:00Z\npriority: high\njira: PROJ-1234\n---\n\n# Title\n\n- [x] One\n- [ ] Two\n";
+    temp.child(".clew/increments/0001-title.md")
+        .write_str(original)
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["start", "1"])
+        .assert()
+        .success();
+
+    let body = read_at(&temp, ".clew/increments/0001-title.md");
+    assert!(body.contains("status: in_progress"));
+    assert!(body.contains("priority: high"));
+    assert!(body.contains("jira: PROJ-1234"));
+    assert!(body.contains("- auth"));
+    assert!(body.contains("- p0"));
+    assert!(body.contains("# Title"));
+    assert!(body.contains("- [x] One"));
+    assert!(body.contains("- [ ] Two"));
+}
+
+#[test]
+fn start_bumps_updated_at() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "todo", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["start", "1"])
+        .assert()
+        .success();
+
+    let body = read_at(&temp, ".clew/increments/0001-a.md");
+    assert!(body.contains("created_at: 2026-04-20T10:00:00Z"));
+    assert!(!body.contains("updated_at: 2026-04-20T10:00:00Z"));
+}
+
 #[test]
 fn new_output_is_pipeable_to_show() {
     // The "stdout = data" principle: `clew new` prints just the ID so it can

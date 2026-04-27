@@ -185,6 +185,13 @@ pub fn write_new_increment(
     Ok(path)
 }
 
+/// Overwrite an existing increment file in place. The shared write seam for
+/// every state-transition command — keep `commands/` from touching the
+/// filesystem directly.
+pub fn write_increment(path: &Path, contents: &str) -> Result<(), ClewError> {
+    std::fs::write(path, contents).map_err(ClewError::Io)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

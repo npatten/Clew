@@ -52,3 +52,23 @@ cargo test <name>    # run a single test by name (substring match)
 cargo clippy         # lint
 cargo fmt            # format
 ```
+
+## Quality gates
+
+Run the full check suite at every milestone. A **milestone** is any of: finishing a logical chunk of work, before a commit, before writing a relay, before handing off, or whenever you're about to claim something works.
+
+Run all three, in this order:
+
+```bash
+cargo fmt --check                       # formatting clean
+cargo clippy --all-targets -- -D warnings   # lints clean, warnings fail the gate
+cargo test                              # all tests pass
+```
+
+Rules:
+
+- **Don't skip.** If you only changed docs, still run them — it costs seconds and catches surprises.
+- **All three must be green** before you commit, write a relay, or report success to the user. "Tests pass" is not enough; clippy and fmt count.
+- **Failures are stop-the-line.** Fix the root cause; do not `#[allow(...)]`, `--no-verify`, or reformat-then-ignore unless the user explicitly approves.
+- **Re-run after every fix** until all three pass cleanly in a single sweep — partial green from stale runs doesn't count.
+- If a tool is unavailable in the environment (e.g., `cargo` missing from PATH), say so explicitly rather than silently skipping.

@@ -2,8 +2,13 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ClewError {
-    #[error("increment not found: #{0:04}")]
-    NotFound(u32),
+    #[error("increment not found: {0}")]
+    NotFound(String),
+
+    #[error(
+        "not inside a clew project (no .clew/ directory found in this directory or any parent)"
+    )]
+    ClewRootNotFound,
 
     #[error("invalid status transition: {from} → {to}")]
     InvalidTransition { from: String, to: String },

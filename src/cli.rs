@@ -25,6 +25,7 @@ pub enum Command {
         parent: Option<u32>,
     },
     /// Show an increment by ID or slug
+    #[command(alias = "view")]
     Show { id: String },
     /// List increments
     List {
@@ -72,7 +73,7 @@ impl Cli {
                 Ok(())
             }
             Some(Command::New { .. }) => crate::commands::new::run(),
-            Some(Command::Show { .. }) => crate::commands::show::run(),
+            Some(Command::Show { id }) => crate::commands::show::run(&id),
             Some(Command::List { .. }) => crate::commands::list::run(),
             Some(Command::Start { .. }) => crate::commands::start::run(),
             Some(Command::Done { .. }) => crate::commands::done::run(),

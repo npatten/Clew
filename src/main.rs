@@ -7,6 +7,7 @@ fn main() -> ExitCode {
             eprintln!("error: {e}");
             match &e {
                 clew::ClewError::NotFound(_)
+                | clew::ClewError::ClewRootNotFound
                 | clew::ClewError::InvalidTransition { .. }
                 | clew::ClewError::SlugCollision(_)
                 | clew::ClewError::Unimplemented => ExitCode::from(1),

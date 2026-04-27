@@ -1062,6 +1062,52 @@ fn abandon_accepts_slug_and_removes_increment_from_path_md() {
 }
 
 #[test]
+fn abandon_transitions_done_to_abandoned() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "archive",
+        "0001-a.md",
+        &fixture_with(1, "a", "done", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["abandon", "1", "shipped wrong thing"])
+        .assert()
+        .success()
+        .stderr(contains("Abandoned #0001"));
+
+    let archived = read_at(&temp, ".clew/archive/0001-a.md");
+    assert!(archived.contains("status: abandoned"));
+    assert!(archived.contains("abandoned_reason: shipped wrong thing"));
+}
+
+#[test]
+fn abandon_rejects_empty_reason() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "todo", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["abandon", "1", "   "])
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains("abandon reason must not be empty"));
+
+    let body = read_at(&temp, ".clew/increments/0001-a.md");
+    assert!(body.contains("status: todo"));
+}
+
+#[test]
 fn abandon_self_loop_tolerates_hand_edited_abandoned_and_archives() {
     let temp = empty_project();
     temp.child(".clew/increments/0001-a.md")
@@ -1083,6 +1129,32 @@ fn abandon_self_loop_tolerates_hand_edited_abandoned_and_archives() {
     assert!(archived.contains("status: abandoned"));
     assert!(archived.contains("abandoned_reason: already decided"));
     assert!(archived.contains("updated_at: 2026-04-20T10:00:00Z"));
+}
+
+#[test]
+fn abandon_self_loop_warns_when_hand_edited_without_reason() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "abandoned", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["abandon", "1", "too late"])
+        .assert()
+        .success()
+        .stderr(contains(
+            "warning: #0001 is abandoned without an abandoned_reason",
+        ))
+        .stderr(contains("Abandoned #0001"));
+
+    let archived = read_at(&temp, ".clew/archive/0001-a.md");
+    assert!(archived.contains("status: abandoned"));
+    assert!(!archived.contains("abandoned_reason:"));
 }
 
 #[test]

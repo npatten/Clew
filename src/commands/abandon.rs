@@ -1,12 +1,18 @@
-use crate::core::{increment::Status, path};
+use crate::core::{frontmatter, increment::Status, path};
 use crate::error::ClewError;
 use crate::storage::fs;
 use std::collections::BTreeMap;
 use std::io::Write;
 
 pub fn run(query: &str, reason: &str) -> Result<(), ClewError> {
+    let reason = reason.trim();
+    if reason.is_empty() {
+        return Err(ClewError::EmptyAbandonReason);
+    }
+
     let cwd = std::env::current_dir().map_err(ClewError::Io)?;
     let root = fs::find_clew_root(&cwd)?;
+    let pre_transition_missing_reason = abandoned_without_reason(&root, query)?;
 
     let transition = crate::commands::transition::apply_with(
         &root,
@@ -50,6 +56,21 @@ pub fn run(query: &str, reason: &str) -> Result<(), ClewError> {
         )
         .map_err(ClewError::Io)?;
     }
+    if transition.self_loop && pre_transition_missing_reason {
+        writeln!(
+            handle,
+            "warning: #{:04} is abandoned without an abandoned_reason",
+            transition.id
+        )
+        .map_err(ClewError::Io)?;
+    }
     writeln!(handle, "Abandoned #{:04}", transition.id).map_err(ClewError::Io)?;
     Ok(())
+}
+
+fn abandoned_without_reason(root: &std::path::Path, query: &str) -> Result<bool, ClewError> {
+    let path = fs::resolve(root, query)?;
+    let contents = fs::read_file(&path)?;
+    let parsed = frontmatter::parse(&contents)?;
+    Ok(parsed.increment.status == Status::Abandoned && parsed.increment.abandoned_reason.is_none())
 }

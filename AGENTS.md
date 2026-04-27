@@ -32,6 +32,12 @@ You are the principal engineer — guide the process, use sub-agents in parallel
 - **Modularity is not simplicity.** Splitting tangled code across files leaves it tangled. Watch for hidden coupling: shared mutable state, implicit ordering, call-site assumptions about internals.
 - **Name the downside.** Any tool, pattern, or abstraction you propose — state its cost alongside its benefit. "Has benefit X" without "and costs Y" is incomplete analysis.
 
+### Code organization
+
+- **Modern module style** — `core.rs` + `core/` directory, not `core/mod.rs`.
+- **`core/` is pure logic** (no I/O); **`storage/` is the I/O seam**; **`commands/` orchestrates**. Keep the seam clean — pure logic stays unit-testable without tempdirs.
+- **`lib.rs` + `main.rs` split** — `main.rs` stays thin; integration tests import the library.
+
 ### Git
 
 - One feature at a time; logical chunks that make sense together

@@ -2,6 +2,8 @@
 
 Pre-MVP scratchpad for ideas deferred during build. Once Clew can manage itself, these graduate into real increments via `clew new`.
 
+- Clew new missing from `clew --help`
+
 ## Ideas
 
 - **`path.md` "in progress" section.** Surface in-flight increments at the top of `path.md` so the priority list is also a current-focus view. Deferred 2026-04-27: cross-file state duplicating `status: in_progress` in frontmatter; risks drift. Cheaper alternative: `clew next` (or a dedicated `clew status`) scans frontmatter and prints "in progress: #0042" without persisting the duplication. Revisit once core CLI is self-hosting.

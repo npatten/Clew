@@ -820,3 +820,155 @@ fn new_output_is_pipeable_to_show() {
         .success()
         .stdout(contains("id: 1"));
 }
+
+// ---------------------------------------------------------------------------
+// `clew done`
+// ---------------------------------------------------------------------------
+
+#[test]
+fn done_transitions_in_progress_to_done_and_archives() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "in_progress", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["done", "1"])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr(contains("Done #0001"));
+
+    assert!(!temp.path().join(".clew/increments/0001-a.md").exists());
+    let archived = read_at(&temp, ".clew/archive/0001-a.md");
+    assert!(archived.contains("status: done"));
+}
+
+#[test]
+fn done_rejects_backlog() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "backlog", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["done", "1"])
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains("invalid status transition"))
+        .stderr(contains("backlog"));
+
+    assert!(temp.path().join(".clew/increments/0001-a.md").exists());
+    assert!(!temp.path().join(".clew/archive/0001-a.md").exists());
+}
+
+#[test]
+fn done_accepts_slug() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-add-oauth.md",
+        &fixture_with(1, "add-oauth", "in_progress", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["done", "add-oauth"])
+        .assert()
+        .success();
+
+    assert!(temp.path().join(".clew/archive/0001-add-oauth.md").exists());
+}
+
+#[test]
+fn done_removes_increment_from_path_md() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "in_progress", None),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0002-b.md",
+        &fixture_with(2, "b", "todo", None),
+    );
+    temp.child(".clew/path.md")
+        .write_str("# Path\n\n- #0001-a\n- #0002-old-b // note\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["done", "1"])
+        .assert()
+        .success();
+
+    assert_eq!(
+        read_at(&temp, ".clew/path.md"),
+        "# Path\n\n- #0002-b // note\n"
+    );
+}
+
+#[test]
+fn done_self_loop_tolerates_hand_edited_done_and_archives_without_bumping_timestamp() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "done", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["done", "1"])
+        .assert()
+        .success()
+        .stderr(contains(
+            "warning: #0001 already marked done; completing archive",
+        ))
+        .stderr(contains("Done #0001"));
+
+    let archived = read_at(&temp, ".clew/archive/0001-a.md");
+    assert!(archived.contains("status: done"));
+    assert!(archived.contains("updated_at: 2026-04-20T10:00:00Z"));
+}
+
+#[test]
+fn done_preserves_unknown_fields_and_body() {
+    let temp = empty_project();
+    let original = "---\nid: 1\nstatus: in_progress\ncreated_at: 2026-04-20T10:00:00Z\nupdated_at: 2026-04-20T10:00:00Z\npriority: high\n---\n\n# Title\n\n- [x] One\n";
+    temp.child(".clew/increments/0001-title.md")
+        .write_str(original)
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["done", "1"])
+        .assert()
+        .success();
+
+    let body = read_at(&temp, ".clew/archive/0001-title.md");
+    assert!(body.contains("status: done"));
+    assert!(body.contains("priority: high"));
+    assert!(body.contains("# Title"));
+    assert!(body.contains("- [x] One"));
+}

@@ -192,6 +192,36 @@ pub fn write_increment(path: &Path, contents: &str) -> Result<(), ClewError> {
     std::fs::write(path, contents).map_err(ClewError::Io)
 }
 
+/// Move an increment from `.clew/increments/` to `.clew/archive/`.
+pub fn archive_increment(path: &Path) -> Result<PathBuf, ClewError> {
+    let filename = path
+        .file_name()
+        .ok_or_else(|| ClewError::Io(std::io::Error::other("increment path has no filename")))?;
+    let archive_dir = path
+        .parent()
+        .and_then(|p| p.parent())
+        .map(|clew_dir| clew_dir.join(ARCHIVE_SUBDIR))
+        .ok_or_else(|| ClewError::Io(std::io::Error::other("increment path has no parent")))?;
+    std::fs::create_dir_all(&archive_dir).map_err(ClewError::Io)?;
+    let archived = archive_dir.join(filename);
+    std::fs::rename(path, &archived).map_err(ClewError::Io)?;
+    Ok(archived)
+}
+
+pub fn read_path_md(root: &Path) -> Result<String, ClewError> {
+    let path = root.join(CLEW_DIR).join("path.md");
+    match std::fs::read_to_string(&path) {
+        Ok(contents) => Ok(contents),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
+        Err(e) => Err(ClewError::Io(e)),
+    }
+}
+
+pub fn write_path_md(root: &Path, contents: &str) -> Result<(), ClewError> {
+    let path = root.join(CLEW_DIR).join("path.md");
+    std::fs::write(path, contents).map_err(ClewError::Io)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

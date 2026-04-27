@@ -45,7 +45,7 @@ pub enum Command {
     /// Unblock an increment
     Unblock { id: u32 },
     /// Mark an increment as done and archive it
-    Done { id: u32 },
+    Done { id: String },
     /// Abandon an increment with a reason
     Abandon { id: u32, reason: String },
     /// Reopen an archived increment
@@ -82,7 +82,7 @@ impl Cli {
                 crate::commands::list::run(tag.as_deref(), status.as_deref(), all)
             }
             Some(Command::Start { id }) => crate::commands::start::run(&id),
-            Some(Command::Done { .. }) => crate::commands::done::run(),
+            Some(Command::Done { id }) => crate::commands::done::run(&id),
             Some(Command::Next { .. }) => crate::commands::next::run(),
             Some(_) => Err(ClewError::Unimplemented),
         }

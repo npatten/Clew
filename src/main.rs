@@ -11,7 +11,6 @@ fn main() -> ExitCode {
                 | clew::ClewError::InvalidTransition { .. }
                 | clew::ClewError::SlugCollision { .. }
                 | clew::ClewError::InvalidStatusFilter(_)
-                | clew::ClewError::EmptyAbandonReason
                 | clew::ClewError::Unimplemented => ExitCode::from(1),
                 clew::ClewError::Io(_) | clew::ClewError::Frontmatter(_) => ExitCode::from(2),
             }

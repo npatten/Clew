@@ -46,8 +46,8 @@ pub enum Command {
     Unblock { id: u32 },
     /// Mark an increment as done and archive it
     Done { id: String },
-    /// Abandon an increment with a reason
-    Abandon { id: String, reason: String },
+    /// Abandon an increment with an optional reason
+    Abandon { id: String, reason: Option<String> },
     /// Reopen an archived increment
     Reopen { id: u32 },
     /// Show or start the next increment
@@ -83,7 +83,9 @@ impl Cli {
             }
             Some(Command::Start { id }) => crate::commands::start::run(&id),
             Some(Command::Done { id }) => crate::commands::done::run(&id),
-            Some(Command::Abandon { id, reason }) => crate::commands::abandon::run(&id, &reason),
+            Some(Command::Abandon { id, reason }) => {
+                crate::commands::abandon::run(&id, reason.as_deref())
+            }
             Some(Command::Next { .. }) => crate::commands::next::run(),
             Some(_) => Err(ClewError::Unimplemented),
         }

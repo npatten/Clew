@@ -4,11 +4,8 @@ use crate::storage::fs;
 use std::collections::BTreeMap;
 use std::io::Write;
 
-pub fn run(query: &str, reason: &str) -> Result<(), ClewError> {
-    let reason = reason.trim();
-    if reason.is_empty() {
-        return Err(ClewError::EmptyAbandonReason);
-    }
+pub fn run(query: &str, reason: Option<&str>) -> Result<(), ClewError> {
+    let reason = reason.map(str::trim).filter(|reason| !reason.is_empty());
 
     let cwd = std::env::current_dir().map_err(ClewError::Io)?;
     let root = fs::find_clew_root(&cwd)?;
@@ -26,7 +23,7 @@ pub fn run(query: &str, reason: &str) -> Result<(), ClewError> {
         Status::Abandoned,
         true,
         |parsed| {
-            parsed.increment.abandoned_reason = Some(reason.to_string());
+            parsed.increment.abandoned_reason = reason.map(ToOwned::to_owned);
         },
     )?;
 
@@ -56,7 +53,9 @@ pub fn run(query: &str, reason: &str) -> Result<(), ClewError> {
         )
         .map_err(ClewError::Io)?;
     }
-    if transition.self_loop && pre_transition_missing_reason {
+    if (reason.is_none() && !transition.self_loop)
+        || (transition.self_loop && pre_transition_missing_reason)
+    {
         writeln!(
             handle,
             "warning: #{:04} is abandoned without an abandoned_reason",

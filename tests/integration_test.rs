@@ -1085,7 +1085,34 @@ fn abandon_transitions_done_to_abandoned() {
 }
 
 #[test]
-fn abandon_rejects_empty_reason() {
+fn abandon_without_reason_warns_and_archives() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "todo", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["abandon", "1"])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr(contains(
+            "warning: #0001 is abandoned without an abandoned_reason",
+        ))
+        .stderr(contains("Abandoned #0001"));
+
+    let archived = read_at(&temp, ".clew/archive/0001-a.md");
+    assert!(archived.contains("status: abandoned"));
+    assert!(!archived.contains("abandoned_reason:"));
+}
+
+#[test]
+fn abandon_with_whitespace_reason_warns_and_archives_without_reason() {
     let temp = empty_project();
     write_increment(
         &temp,
@@ -1099,12 +1126,14 @@ fn abandon_rejects_empty_reason() {
         .current_dir(temp.path())
         .args(["abandon", "1", "   "])
         .assert()
-        .failure()
-        .code(1)
-        .stderr(contains("abandon reason must not be empty"));
+        .success()
+        .stderr(contains(
+            "warning: #0001 is abandoned without an abandoned_reason",
+        ));
 
-    let body = read_at(&temp, ".clew/increments/0001-a.md");
-    assert!(body.contains("status: todo"));
+    let archived = read_at(&temp, ".clew/archive/0001-a.md");
+    assert!(archived.contains("status: abandoned"));
+    assert!(!archived.contains("abandoned_reason:"));
 }
 
 #[test]

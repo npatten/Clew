@@ -24,9 +24,6 @@ pub enum ClewError {
     )]
     InvalidStatusFilter(String),
 
-    #[error("abandon reason must not be empty")]
-    EmptyAbandonReason,
-
     #[error("io: {0}")]
     Io(#[from] std::io::Error),
 

@@ -1,5 +1,74 @@
+use crate::core::increment::Status;
 use crate::error::ClewError;
+use crate::storage::fs;
+use std::io::Write;
 
-pub fn run() -> Result<(), ClewError> {
-    Err(ClewError::Unimplemented)
+pub fn run(tag: Option<&str>, status: Option<&str>, all: bool) -> Result<(), ClewError> {
+    let cwd = std::env::current_dir().map_err(ClewError::Io)?;
+    let root = fs::find_clew_root(&cwd)?;
+
+    let status_filter = status.map(parse_status_filter).transpose()?;
+
+    let mut loaded = fs::scan_with_frontmatter(&root)?;
+    loaded.sort_by_key(|e| e.entry.id);
+
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+    for item in loaded {
+        let archived = fs::is_archived(&item.entry.path);
+        if !all && archived {
+            continue;
+        }
+        if let Some(ref s) = status_filter {
+            if &item.parsed.increment.status != s {
+                continue;
+            }
+        }
+        if let Some(t) = tag {
+            if !item.parsed.increment.tags.iter().any(|x| x == t) {
+                continue;
+            }
+        }
+        writeln!(
+            handle,
+            "{:04} {} {}",
+            item.entry.id, item.parsed.increment.status, item.entry.slug
+        )
+        .map_err(ClewError::Io)?;
+    }
+    Ok(())
+}
+
+fn parse_status_filter(value: &str) -> Result<Status, ClewError> {
+    match value {
+        "backlog" => Ok(Status::Backlog),
+        "todo" => Ok(Status::Todo),
+        "in_progress" => Ok(Status::InProgress),
+        "done" => Ok(Status::Done),
+        "abandoned" => Ok(Status::Abandoned),
+        other => Err(ClewError::InvalidStatusFilter(other.to_string())),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_status_filter_accepts_all_known_values() {
+        assert_eq!(parse_status_filter("backlog").unwrap(), Status::Backlog);
+        assert_eq!(parse_status_filter("todo").unwrap(), Status::Todo);
+        assert_eq!(
+            parse_status_filter("in_progress").unwrap(),
+            Status::InProgress
+        );
+        assert_eq!(parse_status_filter("done").unwrap(), Status::Done);
+        assert_eq!(parse_status_filter("abandoned").unwrap(), Status::Abandoned);
+    }
+
+    #[test]
+    fn parse_status_filter_rejects_unknown_value() {
+        let err = parse_status_filter("flying").unwrap_err();
+        assert!(matches!(err, ClewError::InvalidStatusFilter(_)));
+    }
 }

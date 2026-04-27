@@ -19,6 +19,11 @@ pub enum ClewError {
     #[error("frontmatter parse error: {0}")]
     Frontmatter(String),
 
+    #[error(
+        "invalid --status value: '{0}' (expected: backlog, todo, in_progress, done, abandoned)"
+    )]
+    InvalidStatusFilter(String),
+
     #[error("io: {0}")]
     Io(#[from] std::io::Error),
 

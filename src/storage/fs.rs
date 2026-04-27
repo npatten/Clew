@@ -1,9 +1,18 @@
+use crate::core::frontmatter::{self, ParsedFile};
 use crate::error::ClewError;
 use std::path::{Path, PathBuf};
 
 const CLEW_DIR: &str = ".clew";
 const INCREMENTS_SUBDIR: &str = "increments";
 const ARCHIVE_SUBDIR: &str = "archive";
+
+/// Returns true if `path` lives under the archive subdir.
+pub fn is_archived(path: &Path) -> bool {
+    path.parent()
+        .and_then(|p| p.file_name())
+        .and_then(|n| n.to_str())
+        == Some(ARCHIVE_SUBDIR)
+}
 
 /// Walk up from `start` looking for a `.clew/` directory.
 pub fn find_clew_root(start: &Path) -> Result<PathBuf, ClewError> {
@@ -130,6 +139,36 @@ pub fn scan(root: &Path) -> Result<Vec<FileEntry>, ClewError> {
         }
     }
     Ok(entries)
+}
+
+/// A `FileEntry` paired with its parsed frontmatter+body. Layered on top of
+/// `scan` so the cheap path stays cheap (ID allocation, slug-collision checks
+/// don't need to read every file).
+#[derive(Debug)]
+pub struct LoadedEntry {
+    pub entry: FileEntry,
+    pub parsed: ParsedFile,
+}
+
+/// Scan + read + parse every increment under both subdirs. Skips files whose
+/// frontmatter fails to parse (logged to stderr) so a single malformed file
+/// can't break `clew list`.
+pub fn scan_with_frontmatter(root: &Path) -> Result<Vec<LoadedEntry>, ClewError> {
+    let entries = scan(root)?;
+    let mut loaded = Vec::with_capacity(entries.len());
+    for entry in entries {
+        let contents = match std::fs::read_to_string(&entry.path) {
+            Ok(c) => c,
+            Err(e) => return Err(ClewError::Io(e)),
+        };
+        match frontmatter::parse(&contents) {
+            Ok(parsed) => loaded.push(LoadedEntry { entry, parsed }),
+            Err(e) => {
+                eprintln!("warning: skipping {}: {}", entry.path.display(), e);
+            }
+        }
+    }
+    Ok(loaded)
 }
 
 /// Write a new increment file under `<root>/.clew/increments/`. Creates the

@@ -320,6 +320,231 @@ fn new_outside_clew_project_errors() {
         .stderr(contains(".clew/"));
 }
 
+// ---------------------------------------------------------------------------
+// `clew list`
+// ---------------------------------------------------------------------------
+
+fn fixture_with(id: u32, slug: &str, status: &str, tags: Option<&str>) -> String {
+    let tags_line = tags.map(|t| format!("tags: {t}\n")).unwrap_or_default();
+    format!(
+        "---\nid: {id}\nstatus: {status}\n{tags_line}created_at: 2026-04-20T10:00:00Z\nupdated_at: 2026-04-20T10:00:00Z\n---\n# {slug}\n"
+    )
+}
+
+fn write_increment(temp: &assert_fs::TempDir, subdir: &str, filename: &str, body: &str) {
+    temp.child(format!(".clew/{subdir}/{filename}"))
+        .write_str(body)
+        .unwrap();
+}
+
+#[test]
+fn list_default_shows_in_flight_only_sorted_by_id() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0002-second.md",
+        &fixture_with(2, "second", "todo", None),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0001-first.md",
+        &fixture_with(1, "first", "backlog", None),
+    );
+    write_increment(
+        &temp,
+        "archive",
+        "0003-archived.md",
+        &fixture_with(3, "archived", "done", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["list"])
+        .assert()
+        .success()
+        .stdout("0001 backlog first\n0002 todo second\n");
+}
+
+#[test]
+fn list_all_includes_archived() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-active.md",
+        &fixture_with(1, "active", "todo", None),
+    );
+    write_increment(
+        &temp,
+        "archive",
+        "0002-shipped.md",
+        &fixture_with(2, "shipped", "done", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["list", "--all"])
+        .assert()
+        .success()
+        .stdout("0001 todo active\n0002 done shipped\n");
+}
+
+#[test]
+fn list_filters_by_status() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "todo", None),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0002-b.md",
+        &fixture_with(2, "b", "in_progress", None),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0003-c.md",
+        &fixture_with(3, "c", "todo", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["list", "--status", "todo"])
+        .assert()
+        .success()
+        .stdout("0001 todo a\n0003 todo c\n");
+}
+
+#[test]
+fn list_filters_by_tag() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "todo", Some("[auth, p0]")),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0002-b.md",
+        &fixture_with(2, "b", "todo", Some("[ui]")),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0003-c.md",
+        &fixture_with(3, "c", "todo", Some("[auth]")),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["list", "--tag", "auth"])
+        .assert()
+        .success()
+        .stdout("0001 todo a\n0003 todo c\n");
+}
+
+#[test]
+fn list_combines_tag_and_status_filters() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "todo", Some("[auth]")),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0002-b.md",
+        &fixture_with(2, "b", "in_progress", Some("[auth]")),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0003-c.md",
+        &fixture_with(3, "c", "todo", Some("[ui]")),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["list", "--tag", "auth", "--status", "todo"])
+        .assert()
+        .success()
+        .stdout("0001 todo a\n");
+}
+
+#[test]
+fn list_empty_project_succeeds_with_no_output() {
+    let temp = empty_project();
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["list"])
+        .assert()
+        .success()
+        .stdout("");
+}
+
+#[test]
+fn list_invalid_status_filter_errors() {
+    let temp = empty_project();
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["list", "--status", "flying"])
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains("invalid --status"))
+        .stderr(contains("flying"));
+}
+
+#[test]
+fn list_walks_up_to_find_clew_root() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-x.md",
+        &fixture_with(1, "x", "todo", None),
+    );
+    let nested = temp.child("a/b");
+    nested.create_dir_all().unwrap();
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(nested.path())
+        .args(["list"])
+        .assert()
+        .success()
+        .stdout("0001 todo x\n");
+}
+
+#[test]
+fn list_outside_clew_project_errors() {
+    let temp = assert_fs::TempDir::new().unwrap();
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["list"])
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains(".clew/"));
+}
+
 #[test]
 fn new_output_is_pipeable_to_show() {
     // The "stdout = data" principle: `clew new` prints just the ID so it can

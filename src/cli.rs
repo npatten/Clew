@@ -78,7 +78,9 @@ impl Cli {
                 parent,
             }) => crate::commands::new::run(&title, ready, parent),
             Some(Command::Show { id }) => crate::commands::show::run(&id),
-            Some(Command::List { .. }) => crate::commands::list::run(),
+            Some(Command::List { tag, status, all }) => {
+                crate::commands::list::run(tag.as_deref(), status.as_deref(), all)
+            }
             Some(Command::Start { .. }) => crate::commands::start::run(),
             Some(Command::Done { .. }) => crate::commands::done::run(),
             Some(Command::Next { .. }) => crate::commands::next::run(),

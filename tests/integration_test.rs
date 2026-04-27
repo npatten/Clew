@@ -369,7 +369,7 @@ fn list_default_shows_in_flight_only_sorted_by_id() {
 }
 
 #[test]
-fn list_all_includes_archived() {
+fn list_default_excludes_terminal_statuses_even_if_unarchived() {
     let temp = empty_project();
     write_increment(
         &temp,
@@ -379,9 +379,46 @@ fn list_all_includes_archived() {
     );
     write_increment(
         &temp,
+        "increments",
+        "0002-done-but-not-archived.md",
+        &fixture_with(2, "done-but-not-archived", "done", None),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0003-abandoned-but-not-archived.md",
+        &fixture_with(3, "abandoned-but-not-archived", "abandoned", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["list"])
+        .assert()
+        .success()
+        .stdout("0001 todo active\n");
+}
+
+#[test]
+fn list_all_includes_archived_and_terminal_statuses() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-active.md",
+        &fixture_with(1, "active", "todo", None),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0002-done-but-not-archived.md",
+        &fixture_with(2, "done-but-not-archived", "done", None),
+    );
+    write_increment(
+        &temp,
         "archive",
-        "0002-shipped.md",
-        &fixture_with(2, "shipped", "done", None),
+        "0003-shipped.md",
+        &fixture_with(3, "shipped", "done", None),
     );
 
     Command::cargo_bin("clew")
@@ -390,7 +427,7 @@ fn list_all_includes_archived() {
         .args(["list", "--all"])
         .assert()
         .success()
-        .stdout("0001 todo active\n0002 done shipped\n");
+        .stdout("0001 todo active\n0002 done done-but-not-archived\n0003 done shipped\n");
 }
 
 #[test]
@@ -510,6 +547,27 @@ fn list_invalid_status_filter_errors() {
         .code(1)
         .stderr(contains("invalid --status"))
         .stderr(contains("flying"));
+}
+
+#[test]
+fn list_malformed_frontmatter_errors() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-broken.md",
+        "---\nid: 1\nstatus: flying\ncreated_at: 2026-04-20T10:00:00Z\nupdated_at: 2026-04-20T10:00:00Z\n---\n",
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["list"])
+        .assert()
+        .failure()
+        .code(2)
+        .stderr(contains("frontmatter parse error"))
+        .stderr(contains("0001-broken.md"));
 }
 
 #[test]

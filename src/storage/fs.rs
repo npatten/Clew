@@ -150,9 +150,11 @@ pub struct LoadedEntry {
     pub parsed: ParsedFile,
 }
 
-/// Scan + read + parse every increment under both subdirs. Skips files whose
-/// frontmatter fails to parse (logged to stderr) so a single malformed file
-/// can't break `clew list`.
+/// Scan + read + parse every increment under both subdirs.
+///
+/// Frontmatter parse failures are returned as errors rather than skipped: an
+/// unreadable increment should stop discovery instead of silently disappearing
+/// from `clew list`.
 pub fn scan_with_frontmatter(root: &Path) -> Result<Vec<LoadedEntry>, ClewError> {
     let entries = scan(root)?;
     let mut loaded = Vec::with_capacity(entries.len());
@@ -161,12 +163,9 @@ pub fn scan_with_frontmatter(root: &Path) -> Result<Vec<LoadedEntry>, ClewError>
             Ok(c) => c,
             Err(e) => return Err(ClewError::Io(e)),
         };
-        match frontmatter::parse(&contents) {
-            Ok(parsed) => loaded.push(LoadedEntry { entry, parsed }),
-            Err(e) => {
-                eprintln!("warning: skipping {}: {}", entry.path.display(), e);
-            }
-        }
+        let parsed = frontmatter::parse(&contents)
+            .map_err(|e| ClewError::Frontmatter(format!("{}: {e}", entry.path.display())))?;
+        loaded.push(LoadedEntry { entry, parsed });
     }
     Ok(loaded)
 }

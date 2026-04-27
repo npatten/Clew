@@ -19,6 +19,9 @@ pub fn run(tag: Option<&str>, status: Option<&str>, all: bool) -> Result<(), Cle
         if !all && archived {
             continue;
         }
+        if !all && status_filter.is_none() && is_terminal_status(&item.parsed.increment.status) {
+            continue;
+        }
         if let Some(ref s) = status_filter {
             if &item.parsed.increment.status != s {
                 continue;
@@ -48,6 +51,10 @@ fn parse_status_filter(value: &str) -> Result<Status, ClewError> {
         "abandoned" => Ok(Status::Abandoned),
         other => Err(ClewError::InvalidStatusFilter(other.to_string())),
     }
+}
+
+fn is_terminal_status(status: &Status) -> bool {
+    matches!(status, Status::Done | Status::Abandoned)
 }
 
 #[cfg(test)]

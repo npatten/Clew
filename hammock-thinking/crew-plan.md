@@ -206,7 +206,7 @@ Status reflects intent ("I want to be working this"); flag reflects reality. Cle
 
 ### Allowed transitions
 
-- `backlog → todo` (via `clew promote`)
+- `backlog → todo` (hand-edit; see "Direct edit is first-class" below — `clew promote` deferred)
 - `backlog → in_progress` (skip todo for trivial work)
 - `todo → in_progress` (via `clew start`)
 - `in_progress → todo` (kicked back; should include a note explaining why)
@@ -214,6 +214,18 @@ Status reflects intent ("I want to be working this"); flag reflects reality. Cle
 - Any state `→ abandoned` (via `clew abandon "reason"`; archives)
 - `done | abandoned → todo` (via `clew reopen`; unarchives)
 - **Not allowed**: `backlog → done`. If you didn't ship it, use `abandoned`.
+
+**Self-loops on terminal-side-effect transitions are tolerated, not rejected.** `clew done` on an item already in `status: done` (but unarchived) completes the archive move and emits `warning: #NNNN already marked done; completing archive`. Same shape for `abandon` and `reopen`. This handles hand-edit-then-CLI workflows without inviting `--force`. Note: `clew start` does not get this tolerance — it has no side effects to complete, so an already-`in_progress` start is a genuine no-op and stays `InvalidTransition` to surface stale assumptions.
+
+### Direct edit is first-class
+
+Operators (humans or agents) can hand-edit `status:` and frontmatter directly. The CLI is convenience over the markdown, not a gate.
+
+- **Pure-metadata changes** (`backlog → todo`, tags, `blocked_reason`, body) need no reconciliation. `updated_at` won't bump per the timestamp rules above; that's the documented tradeoff.
+- **Terminal-side-effect transitions** (`done`, `abandoned`, `reopen`) involve file moves and `path.md` updates — prefer the CLI command. If hand-edited first, the corresponding CLI command tolerates the already-flipped state and completes the side effects (see self-loop tolerance above).
+- **`clew lint` is advisory.** It surfaces drift (e.g., `status: done` in `increments/`) and names the right command. It does not silently fix; reconciliation goes through the original transition command, used after the fact.
+
+Why this asymmetry: pure metadata flips have no derived state for the CLI to manage, so the CLI gesture isn't faster than the file edit you were already making. Side-effect transitions do real work the operator can't replicate by editing one field. Build CLI commands where they earn their keep through side work or frequency, not for symmetry.
 
 ### Timestamps
 
@@ -377,7 +389,7 @@ A typical session:
 - `clew new "<title>"` — creates in `backlog` (or `todo` with `--ready`). Optional `--parent <id>` flag to link to a parent increment.
 - `clew show <id>` — accepts numeric ID or slug.
 - `clew list [--tag X] [--status Y] [--all]` — filtered listing. Default: in-flight items only. `--all` includes archived.
-- `clew promote <id>` — backlog → todo.
+- `clew promote <id>` — *deferred.* Direct frontmatter edit (`status: backlog` → `status: todo`) suffices; the transition has no side effects. Revisit if MVP self-hosting reveals friction.
 - `clew start <id>` — → in_progress.
 - `clew block <id> "reason"` / `clew unblock <id>` — toggle blocked flag.
 - `clew done <id>` — → done, archive, remove from path. Does NOT touch `relay.md`.

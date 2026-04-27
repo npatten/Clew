@@ -1,45 +1,56 @@
 ---
-topic: Clew CLI — clew list shipped; next is state transitions
-updated_at: 2026-04-27T13:00:00Z
+topic: Clew CLI — clew start shipped; promote deferred; clew done is next
+updated_at: 2026-04-27T14:00:00Z
 ---
 
-# Relay: Clew CLI — list shipped, transition write path next
+# Relay: Clew CLI — start shipped, done with self-loop tolerance is next
 
 ## Status
 
-`clew new` and `clew list` are complete end-to-end. Latest commit is `0d2f937 fix clew list discovery semantics`, on top of `669f200 implement clew list with status/tag/all filters` and `797cb1b implement clew new with slug, ID allocation, and parent validation`. Quality gate was green after the latest changes: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`.
+`clew start` is complete end-to-end. Quality gate green: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test` (40 passing, 10 new for `start`). Plan updated with a "Direct edit is first-class" principle that shifted the roadmap: `clew promote` is deferred; `clew done` is the next vertical slice and gets new tolerance behavior.
 
 ## Just finished
 
-- **`clew list`** in `src/commands/list.rs`: supports `--tag`, `--status`, and `--all`; sorts by ID ascending; emits pipeable lines as `NNNN status slug`.
-- **Default list semantics fixed**: `clew list` now hides terminal statuses (`done`, `abandoned`) even if those files are still in `.clew/increments/`. `--all` includes archived files and terminal statuses.
-- **Malformed frontmatter handling fixed** in `src/storage/fs.rs`: `scan_with_frontmatter()` now returns `ClewError::Frontmatter(...)` with the path instead of warning and silently skipping the broken increment. This exits as code `2` via `src/main.rs`.
-- **Tests added** in `tests/integration_test.rs`: unarchived terminal statuses hidden by default, `--all` includes terminal statuses, malformed frontmatter fails with exit code `2`.
+- **`clew start`** in `src/commands/start.rs`: resolves ID-or-slug via `fs::resolve`, validates `backlog|todo → in_progress` (anything else is `InvalidTransition`), bumps `updated_at` to second-precision UTC, preserves unknown fields + body via `frontmatter::serialize`. stdout empty; stderr `Started #NNNN`, plus `warning: #NNNN is blocked: <reason>` when `blocked_reason` is set.
+- **`fs::write_increment(path, contents)`** added in `src/storage/fs.rs` as the shared overwrite seam for transition commands. Symmetric with `write_new_increment`. All transition commands should go through it.
+- **`Start` CLI arg widened** from `u32` to `String` in `src/cli.rs`. Other transition commands (`Promote`/`Block`/`Unblock`/`Done`/`Abandon`/`Reopen`/`Renumber`) still take `u32`; widen as each ships.
+- **Plan updates** in `hammock-thinking/crew-plan.md`:
+  - New §"Direct edit is first-class" subsection under §Statuses & transitions: hand-editing `status:` and frontmatter is a co-equal path; CLI is convenience, not gate; `clew lint` is advisory, not corrective.
+  - §"Allowed transitions" gained a paragraph on **self-loop tolerance for terminal-side-effect transitions** (`done`/`abandon`/`reopen`): hand-edited-then-CLI workflow completes side effects with a terse `warning: #NNNN already marked done; completing archive`. `clew start` explicitly excluded from this tolerance.
+  - §"CLI sketch" `clew promote` line marked deferred — direct frontmatter edit suffices for `backlog → todo`.
+- **`backlog.md`** new "Rejected (with reasoning)" section records the `clew touch` / `clew lint --fix` rejection so future-us doesn't re-litigate. `clew promote` deferral also captured under "Ideas".
+- **Interview artifact**: `hammock-thinking/promote-interviews.md` captures GPT 5.5, Gemini Pro, Opus 4.7 takes on `promote` plus a synthesis. Drove the deferral decision.
 
 ## Next action
 
-Implement `clew start` as the first state-transition vertical slice. Steps:
+Implement `clew done` as the next vertical slice. This is the **second** read-mutate-write transition, so it's the right time to extract a shared `transition()` helper rather than duplicating `start`'s body. Steps:
 
-1. Widen the CLI arg from `u32` to `String` (in `src/cli.rs`) so it accepts ID-or-slug, matching `show`. Same widening applies to all other transition commands — do them as we ship each, not pre-emptively.
-2. Resolve via `fs::resolve(root, query)` (already supports padded ID, unpadded ID, slug across both subdirs).
-3. Parse with `frontmatter::parse`, validate transition to `in_progress` (use existing `ClewError::InvalidTransition`), bump `updated_at` via the `Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true).parse()` round-trip pattern from `commands::new`.
-4. Add `fs::write_increment(path, contents)` as the existing-file overwrite seam — symmetric with `write_new_increment`. Define it now so every transition command shares one write path.
-5. Serialize via `frontmatter::serialize` (preserves body + unknown fields by construction).
-6. Integration tests: happy path, invalid transition, ID and slug lookup, unknown ID.
+1. Widen `Done { id }` from `u32` to `String` in `src/cli.rs`; route through `commands::done::run(&id)`.
+2. Extract a shared helper. Tentative shape: `commands::transition::run(query, allowed_from: &[Status], to: Status, on_success: Fn)` or similar — but design for the actual call sites, don't pre-design. `start` becomes a one-liner that calls it; `done` adds the side-effect closure.
+3. **Side effects on success**: `git mv`-equivalent file move from `.clew/increments/` to `.clew/archive/` (use `std::fs::rename`; we don't shell out to git — that's the user's job per plan §"Git integration"). Add `fs::archive_increment(path) -> PathBuf` as the move seam.
+4. **Self-loop tolerance** (per plan): if status is already `done` but the file is in `increments/`, complete the archive move and emit `warning: #NNNN already marked done; completing archive`. Don't bump `updated_at` in this case — the operator's hand-edit timestamp wins; the CLI is just finishing side effects.
+5. **`path.md`**: `clew done` removes `#NNNN` from `path.md`. We don't have a path.md writer yet — add `core::path::remove(path_md_text, id) -> String` (pure function) and `fs::read_path_md` / `fs::write_path_md`. Self-healing: on write, normalize remaining entries to current ID+slug form (per plan line 282).
+6. **Output**: stderr `Done #NNNN` (terse, matches `Started #NNNN`). stdout empty.
+7. **Integration tests**: happy path (`in_progress → done`), invalid-from rejections (e.g., `backlog → done` not allowed), self-loop tolerance with warning, ID and slug lookup, `path.md` removal, archive move verification, unknown-field preservation.
 
-Do `start` end-to-end before extracting any shared `transition()` helper — second use of the read-mutate-write pattern is the right time to extract, not the first.
+`clew abandon` and `clew reopen` follow the same pattern (file move + tolerance + warning); they should reuse the same helpers but ship as separate slices.
 
 ## Context worth carrying
 
-- `fs::scan(root) -> Vec<FileEntry>` is filename-only and intentionally cheap. `fs::scan_with_frontmatter(root) -> Vec<LoadedEntry>` is the richer read path used by `list`; it now fails on parse errors.
-- `fs::resolve(root, query)` already supports padded ID, unpadded ID, and slug lookup across `increments/` then `archive/`; use it for transition commands that take an ID/slug query.
-- There is not yet a generic overwrite helper for existing increment files. Plan: add `fs::write_increment(path, contents)` in `src/storage/fs.rs`, symmetric with `write_new_increment`. Every transition command should go through it — keep `commands/` from touching the filesystem directly.
-- Timestamp format invariant: RFC3339 UTC with `Z`, second precision, no subseconds. `clew new` currently creates this by round-tripping `Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true).parse()`.
-- Preserve unknown frontmatter fields and body verbatim. `frontmatter::parse` + `frontmatter::serialize` are the intended route.
-- `clew new` stdout is just padded ID + newline. `clew list` stdout is data only. Keep status/progress/errors on stderr.
-- Quality gate before each milestone: `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`.
+- **Terse warning pattern is locked in** as a token-frugal principle. `warning: #NNNN <reason>` — short enough that the operator already knows context. Don't write explanatory warnings.
+- **`start` does NOT get self-loop tolerance** — only terminal-side-effect transitions (`done`/`abandon`/`reopen`) do. Already-`in_progress` start stays `InvalidTransition` to surface stale assumptions. The asymmetry is intentional: tolerance exists to *complete side effects*, not to make every command idempotent.
+- **`fs::write_increment(path, contents)`** is the existing-file overwrite seam (added in this session). All transition commands should go through it; don't `std::fs::write` from `commands/` directly.
+- **`fs::resolve(root, query)`** handles padded ID, unpadded ID, and slug across `increments/` then `archive/`. Use it for any ID-or-slug query.
+- **Timestamp invariant**: RFC 3339 UTC with `Z`, second precision, no subseconds. The round-trip pattern is `Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true).parse().expect("RFC 3339 round-trip")`. Used in `commands/new.rs` and `commands/start.rs`.
+- **Frontmatter round-trip preserves unknown fields and body verbatim** via `frontmatter::parse` + `frontmatter::serialize`. Don't bypass.
+- **Output discipline**: stdout = data, stderr = status/errors/warnings. `clew new` → padded ID on stdout. `clew list` → data lines on stdout. `clew start` → empty stdout, status on stderr. Maintain this for every transition.
+- **YAML quoting note**: `yaml_serde` emits single quotes for `#`-bearing strings (e.g., `blocked_reason: 'waiting on #0039'`). Both single and double quotes are valid YAML; tests should match the canonical (single-quote) output, not whatever was hand-written in the input fixture.
+- **Quality gate before each milestone**: `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`. All three must pass before commit/relay.
 
 ## Decisions locked in this session
 
-- **Transition commands accept ID-or-slug**, matching `show`. The current `<id>: u32` typing in `src/cli.rs` for `Promote`/`Start`/`Block`/`Unblock`/`Done`/`Abandon`/`Reopen`/`Renumber` should be widened to `String` and resolved via `fs::resolve`. Widen as each command ships.
-- **One vertical slice at a time, no upfront shared helper.** Do `clew start` end-to-end first; extract a shared `transition()` only on the second use, where duplication is concrete.
+- **`clew promote` deferred.** Direct frontmatter edit (`status: backlog` → `status: todo`) is first-class. The transition has no side effects, and the operator is usually in the file sharpening the body anyway. Revisit if MVP self-hosting reveals real friction.
+- **`clew touch` / `clew lint --fix` rejected outright.** Reconcile-after-hand-edit is `--force` in disguise; collapses the direct-edit principle; requires intent inference the CLI can't do safely. Recorded in `backlog.md` under "Rejected (with reasoning)" so this doesn't get re-proposed.
+- **`clew lint` stays advisory.** Surfaces drift, names the right command, never silently fixes. The original transition command is the reconciliation path.
+- **Self-loop tolerance is the answer for hand-edit-then-CLI workflows.** `done`/`abandon`/`reopen` tolerate already-flipped status, complete side effects, emit terse warning. `start` does NOT — pure-metadata transition with no side effects to complete.
+- **Extract `transition()` helper on the second use, not the first.** That moment is now (`clew done` is #2). Design for actual call sites, not hypothetical future ones.

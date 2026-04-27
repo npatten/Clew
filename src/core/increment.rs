@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -41,6 +41,8 @@ pub struct Increment {
 
     /// Preserves any frontmatter fields the CLI doesn't know about.
     /// Load-bearing for the extensibility model — do not remove.
+    /// BTreeMap (not HashMap) for deterministic serialization order; the
+    /// markdown+frontmatter output IS our agent-facing API and must not drift.
     #[serde(flatten)]
-    pub extra: HashMap<String, yaml_serde::Value>,
+    pub extra: BTreeMap<String, yaml_serde::Value>,
 }

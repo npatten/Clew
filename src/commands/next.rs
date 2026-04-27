@@ -1,5 +1,5 @@
 use crate::error::ClewError;
 
 pub fn run() -> Result<(), ClewError> {
-    unimplemented!()
+    Err(ClewError::Unimplemented)
 }

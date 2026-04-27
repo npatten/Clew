@@ -21,16 +21,16 @@ pub fn parse(text: &str) -> Result<ParsedFile, ClewError> {
 
     // Strip the leading `---\n` then split on the next `---\n`.
     let after_open = &text[4..];
-    let close_pos = after_open.find("\n---\n").ok_or_else(|| {
-        ClewError::Frontmatter("missing closing '---' delimiter".into())
-    })?;
+    let close_pos = after_open
+        .find("\n---\n")
+        .ok_or_else(|| ClewError::Frontmatter("missing closing '---' delimiter".into()))?;
 
     let yaml_chunk = &after_open[..close_pos];
     // body starts after the `\n---\n` (5 chars)
     let body = after_open[close_pos + 5..].to_string();
 
-    let increment: Increment = yaml_serde::from_str(yaml_chunk)
-        .map_err(|e| ClewError::Frontmatter(e.to_string()))?;
+    let increment: Increment =
+        yaml_serde::from_str(yaml_chunk).map_err(|e| ClewError::Frontmatter(e.to_string()))?;
 
     Ok(ParsedFile { increment, body })
 }
@@ -58,21 +58,59 @@ mod tests {
 
     #[test]
     fn round_trip_preserves_unknown_fields() {
-        let input = "---\nid: 42\nstatus: todo\ncreated_at: \"2026-04-26T10:00:00Z\"\nupdated_at: \"2026-04-26T10:00:00Z\"\npriority: high\njira: PROJ-1234\n---\n# My increment\n\nSome body.\n";
+        // Covers: scalar string, scalar number, bool, string-with-`#` (must be quoted),
+        // nested map, array of strings, array of mixed scalars.
+        let input = "---\n\
+id: 42\n\
+status: todo\n\
+created_at: \"2026-04-26T10:00:00Z\"\n\
+updated_at: \"2026-04-26T10:00:00Z\"\n\
+priority: high\n\
+story_points: 5\n\
+needs_review: true\n\
+linked_issue: \"see #0039\"\n\
+estimates:\n  best: 1\n  worst: 5\n\
+reviewers:\n- alice\n- bob\n\
+mixed:\n- 1\n- two\n- true\n\
+---\n# My increment\n\nSome body.\n";
         let parsed = parse(input).expect("parse should succeed");
 
         assert_eq!(parsed.increment.id, 42);
 
-        let extra = &parsed.increment.extra;
-        assert!(extra.contains_key("priority"), "priority field missing");
-        assert!(extra.contains_key("jira"), "jira field missing");
+        // All unknown keys must survive parse.
+        for key in [
+            "priority",
+            "story_points",
+            "needs_review",
+            "linked_issue",
+            "estimates",
+            "reviewers",
+            "mixed",
+        ] {
+            assert!(
+                parsed.increment.extra.contains_key(key),
+                "unknown field '{key}' missing after parse"
+            );
+        }
 
+        // Round-trip equality on the entire extra map: values, types, nested
+        // structure, all preserved (not just key presence).
         let serialized = serialize(&parsed).expect("serialize should succeed");
         let reparsed = parse(&serialized).expect("re-parse should succeed");
+        assert_eq!(
+            parsed.increment.extra, reparsed.increment.extra,
+            "extra map drifted across round-trip"
+        );
+    }
 
-        assert_eq!(reparsed.increment.id, 42);
-        assert!(reparsed.increment.extra.contains_key("priority"));
-        assert!(reparsed.increment.extra.contains_key("jira"));
+    #[test]
+    fn unknown_field_serialization_is_deterministic() {
+        // Two parses of the same input must serialize identically — protects
+        // against HashMap-style nondeterminism in the extra map.
+        let input = "---\nid: 1\nstatus: backlog\ncreated_at: \"2026-04-26T10:00:00Z\"\nupdated_at: \"2026-04-26T10:00:00Z\"\nzeta: 1\nalpha: 2\nmu: 3\nbeta: 4\n---\n";
+        let a = serialize(&parse(input).unwrap()).unwrap();
+        let b = serialize(&parse(input).unwrap()).unwrap();
+        assert_eq!(a, b, "serialization is nondeterministic across parses");
     }
 
     #[test]
@@ -117,9 +155,19 @@ mod tests {
     }
 
     #[rstest]
-    #[case("id: 1\nstatus: backlog\ncreated_at: \"2026-04-26T10:00:00Z\"\n", "missing updated_at")]
+    #[case(
+        "id: 1\nstatus: backlog\ncreated_at: \"2026-04-26T10:00:00Z\"\n",
+        "missing updated_at"
+    )]
     #[case("status: backlog\ncreated_at: \"2026-04-26T10:00:00Z\"\nupdated_at: \"2026-04-26T10:00:00Z\"\n", "missing id")]
-    #[case("id: 1\ncreated_at: \"2026-04-26T10:00:00Z\"\nupdated_at: \"2026-04-26T10:00:00Z\"\n", "missing status")]
+    #[case(
+        "id: 1\ncreated_at: \"2026-04-26T10:00:00Z\"\nupdated_at: \"2026-04-26T10:00:00Z\"\n",
+        "missing status"
+    )]
+    #[case(
+        "id: 1\nstatus: backlog\nupdated_at: \"2026-04-26T10:00:00Z\"\n",
+        "missing created_at"
+    )]
     fn required_fields_missing_errors(#[case] yaml: &str, #[case] _desc: &str) {
         let input = format!("---\n{}---\n", yaml);
         parse(&input).expect_err("should fail on missing required field");

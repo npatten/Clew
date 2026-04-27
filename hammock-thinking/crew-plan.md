@@ -107,11 +107,11 @@ Postel's Law: liberal in what we accept, strict in what we produce. LLMs halluci
 
 ```yaml
 ---
-id: 0042
+id: 42
 status: in_progress # backlog | todo | in_progress | done | abandoned
-blocked_reason: "..." # optional; presence = blocked
+blocked_reason: "waiting on #0039" # optional; presence = blocked. Quote any value containing `#` (YAML treats bare `#` as comment)
 abandoned_reason: "..." # optional; written by `clew abandon`; preserved through archive/reopen
-parent: 0007 # optional; this increment is a child of increment 0007
+parent: 7 # optional; this increment is a child of increment 0007
 tags: [auth, p0] # optional, free-form, CLI-aware
 created_at: 2026-04-20T10:00:00Z
 updated_at: 2026-04-25T14:30:00Z
@@ -119,6 +119,8 @@ updated_at: 2026-04-25T14:30:00Z
 ```
 
 CLI-managed fields: `id`, `status`, `created_at`, `updated_at`. CLI-aware: `parent`, `blocked_reason`, `abandoned_reason`, `tags`. Everything else is preserved-but-ignored — see Extensibility below.
+
+**`id` and `parent` in frontmatter are plain integers**, not zero-padded strings. Zero-padding is a presentation rule for **filenames** (`0042-add-oauth-routes.md`) and **prose references** (`#0042`); the YAML scalar is just an integer. (YAML 1.2 parses `0042` as a string anyway, which would break `u32` deserialization.) The CLI renders `#NNNN` form on output regardless.
 
 **Why `abandoned_reason` is persisted in frontmatter:** when an agent later searches `archive/` to see if a feature was ever attempted, the "why we stopped" context must be permanently attached to the file. Otherwise agents hallucinate that they should retry the dead end. Parallel to `blocked_reason`, but written once by `clew abandon` and not cleared (the file is archived; the reason is part of the historical record).
 

@@ -1,8 +1,12 @@
-use clap::{Parser, Subcommand};
 use crate::error::ClewError;
+use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "clew", version, about = "Lightweight git-native project management")]
+#[command(
+    name = "clew",
+    version,
+    about = "Lightweight git-native project management"
+)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Option<Command>,

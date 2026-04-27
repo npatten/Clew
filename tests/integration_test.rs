@@ -998,3 +998,138 @@ fn done_preserves_unknown_fields_and_body() {
     assert!(body.contains("# Title"));
     assert!(body.contains("- [x] One"));
 }
+
+// ---------------------------------------------------------------------------
+// `clew abandon`
+// ---------------------------------------------------------------------------
+
+#[test]
+fn abandon_transitions_in_progress_to_abandoned_archives_and_records_reason() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "in_progress", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["abandon", "1", "not worth doing"])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr(contains("Abandoned #0001"));
+
+    assert!(!temp.path().join(".clew/increments/0001-a.md").exists());
+    let archived = read_at(&temp, ".clew/archive/0001-a.md");
+    assert!(archived.contains("status: abandoned"));
+    assert!(archived.contains("abandoned_reason: not worth doing"));
+}
+
+#[test]
+fn abandon_accepts_slug_and_removes_increment_from_path_md() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-add-oauth.md",
+        &fixture_with(1, "add-oauth", "todo", None),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0002-b.md",
+        &fixture_with(2, "b", "todo", None),
+    );
+    temp.child(".clew/path.md")
+        .write_str("# Path\n\n- #0001-add-oauth\n- #0002-old-b // note\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["abandon", "add-oauth", "superseded"])
+        .assert()
+        .success();
+
+    assert!(temp.path().join(".clew/archive/0001-add-oauth.md").exists());
+    assert_eq!(
+        read_at(&temp, ".clew/path.md"),
+        "# Path\n\n- #0002-b // note\n"
+    );
+}
+
+#[test]
+fn abandon_self_loop_tolerates_hand_edited_abandoned_and_archives() {
+    let temp = empty_project();
+    temp.child(".clew/increments/0001-a.md")
+        .write_str("---\nid: 1\nstatus: abandoned\nabandoned_reason: already decided\ncreated_at: 2026-04-20T10:00:00Z\nupdated_at: 2026-04-20T10:00:00Z\n---\n#a\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["abandon", "1", "not used on self-loop"])
+        .assert()
+        .success()
+        .stderr(contains(
+            "warning: #0001 already marked abandoned; completing archive",
+        ))
+        .stderr(contains("Abandoned #0001"));
+
+    let archived = read_at(&temp, ".clew/archive/0001-a.md");
+    assert!(archived.contains("status: abandoned"));
+    assert!(archived.contains("abandoned_reason: already decided"));
+    assert!(archived.contains("updated_at: 2026-04-20T10:00:00Z"));
+}
+
+#[test]
+fn abandon_already_archived_abandoned_is_success_with_warning() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "archive",
+        "0001-a.md",
+        &fixture_with(1, "a", "abandoned", None),
+    );
+    temp.child(".clew/path.md")
+        .write_str("# Path\n\n- #0001-a\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["abandon", "1", "already gone"])
+        .assert()
+        .success()
+        .stderr(contains("warning: #0001 already archived"))
+        .stderr(contains("Abandoned #0001"));
+
+    assert!(temp.path().join(".clew/archive/0001-a.md").exists());
+    assert_eq!(read_at(&temp, ".clew/path.md"), "# Path\n\n");
+}
+
+#[test]
+fn abandon_preserves_unknown_fields_and_body() {
+    let temp = empty_project();
+    let original = "---\nid: 1\nstatus: backlog\ncreated_at: 2026-04-20T10:00:00Z\nupdated_at: 2026-04-20T10:00:00Z\npriority: high\n---\n\n# Title\n\n- [ ] One\n";
+    temp.child(".clew/increments/0001-title.md")
+        .write_str(original)
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["abandon", "1", "won't do"])
+        .assert()
+        .success();
+
+    let body = read_at(&temp, ".clew/archive/0001-title.md");
+    assert!(body.contains("status: abandoned"));
+    assert!(body.contains("abandoned_reason: won't do"));
+    assert!(body.contains("priority: high"));
+    assert!(body.contains("# Title"));
+    assert!(body.contains("- [ ] One"));
+}

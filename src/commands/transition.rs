@@ -21,6 +21,17 @@ pub fn apply(
     to: Status,
     tolerate_self_loop: bool,
 ) -> Result<AppliedTransition, ClewError> {
+    apply_with(root, query, allowed_from, to, tolerate_self_loop, |_| {})
+}
+
+pub fn apply_with(
+    root: &Path,
+    query: &str,
+    allowed_from: &[Status],
+    to: Status,
+    tolerate_self_loop: bool,
+    mutate: impl FnOnce(&mut frontmatter::ParsedFile),
+) -> Result<AppliedTransition, ClewError> {
     let path = fs::resolve(root, query)?;
     let contents = fs::read_file(&path)?;
     let mut parsed = frontmatter::parse(&contents)?;
@@ -50,6 +61,7 @@ pub fn apply(
         .to_rfc3339_opts(SecondsFormat::Secs, true)
         .parse()
         .expect("RFC 3339 round-trip");
+    mutate(&mut parsed);
 
     let id = parsed.increment.id;
     let blocked_reason = parsed.increment.blocked_reason.clone();

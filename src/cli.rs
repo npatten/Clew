@@ -47,7 +47,7 @@ pub enum Command {
     /// Mark an increment as done and archive it
     Done { id: String },
     /// Abandon an increment with a reason
-    Abandon { id: u32, reason: String },
+    Abandon { id: String, reason: String },
     /// Reopen an archived increment
     Reopen { id: u32 },
     /// Show or start the next increment
@@ -83,6 +83,7 @@ impl Cli {
             }
             Some(Command::Start { id }) => crate::commands::start::run(&id),
             Some(Command::Done { id }) => crate::commands::done::run(&id),
+            Some(Command::Abandon { id, reason }) => crate::commands::abandon::run(&id, &reason),
             Some(Command::Next { .. }) => crate::commands::next::run(),
             Some(_) => Err(ClewError::Unimplemented),
         }

@@ -26,6 +26,12 @@ You are the principal engineer — guide the process, use sub-agents in parallel
 - Raise larger refactors with the user before starting
 - Conserve context: scout sub-agents for whole-file reads; parallel sub-agents for independent tasks
 
+### Design discipline
+
+- **Simple ≠ easy.** Familiar is not simple. Before choosing a construct, ask: does it _complect_ (braid together) concerns that could be independent? Can the next reader reason about one piece without loading the others? "I already know this pattern" is not an argument.
+- **Modularity is not simplicity.** Splitting tangled code across files leaves it tangled. Watch for hidden coupling: shared mutable state, implicit ordering, call-site assumptions about internals.
+- **Name the downside.** Any tool, pattern, or abstraction you propose — state its cost alongside its benefit. "Has benefit X" without "and costs Y" is incomplete analysis.
+
 ### Git
 
 - One feature at a time; logical chunks that make sense together

@@ -5,6 +5,9 @@ use std::collections::BTreeMap;
 /// The parser is intentionally permissive: if a line contains a `#NNNN`
 /// reference matching `id`, that whole line is removed. Everything else is
 /// preserved verbatim.
+///
+/// TODO: tighten this if `path.md` grows richer prose comments; today path is
+/// defined as a priority list, so dropping the whole matching line is correct.
 pub fn remove(text: &str, id: u32) -> String {
     let needle = format!("#{id:04}");
     text.lines()
@@ -16,6 +19,9 @@ pub fn remove(text: &str, id: u32) -> String {
 
 /// Normalize known `#NNNN[-slug]` references to `#NNNN-current-slug`.
 /// Unknown references and surrounding annotations are preserved.
+///
+/// TODO: this only rewrites the first reference per line. That matches the
+/// current path list format; don't generalize until path needs it.
 pub fn normalize(text: &str, slugs_by_id: &BTreeMap<u32, String>) -> String {
     text.lines()
         .map(|line| normalize_line(line, slugs_by_id))

@@ -952,6 +952,32 @@ fn done_self_loop_tolerates_hand_edited_done_and_archives_without_bumping_timest
 }
 
 #[test]
+fn done_already_archived_done_is_success_with_warning() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "archive",
+        "0001-a.md",
+        &fixture_with(1, "a", "done", None),
+    );
+    temp.child(".clew/path.md")
+        .write_str("# Path\n\n- #0001-a\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["done", "1"])
+        .assert()
+        .success()
+        .stderr(contains("warning: #0001 already archived"))
+        .stderr(contains("Done #0001"));
+
+    assert!(temp.path().join(".clew/archive/0001-a.md").exists());
+    assert_eq!(read_at(&temp, ".clew/path.md"), "# Path\n\n");
+}
+
+#[test]
 fn done_preserves_unknown_fields_and_body() {
     let temp = empty_project();
     let original = "---\nid: 1\nstatus: in_progress\ncreated_at: 2026-04-20T10:00:00Z\nupdated_at: 2026-04-20T10:00:00Z\npriority: high\n---\n\n# Title\n\n- [x] One\n";

@@ -1,34 +1,36 @@
 ---
-topic: Clew CLI — clew done shipped; abandon is next
-updated_at: 2026-04-27T14:30:00Z
+topic: Clew CLI — done cleanup complete; abandon is next
+updated_at: 2026-04-27T15:00:00Z
 ---
 
-# Relay: Clew CLI — done shipped, abandon is next
+# Relay: Clew CLI — done cleanup complete, abandon is next
 
 ## Status
 
-`clew done` is complete end-to-end and committed as `1431a23`. Quality gate green after implementation: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`.
+`clew done` is shipped and the reviewer cleanup patch is complete. Quality gate green after cleanup: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`.
 
 ## Just finished
 
-- **`clew done <id-or-slug>`** in `src/commands/done.rs`: resolves ID or slug, transitions `in_progress → done`, bumps `updated_at`, writes via the shared frontmatter round-trip path, archives from `.clew/increments/` to `.clew/archive/`, updates `path.md`, and prints `Done #NNNN` to stderr with empty stdout.
-- **Self-loop tolerance for `done`**: if an increment is already `status: done` but still in `.clew/increments/`, `clew done` completes the archive move, emits `warning: #NNNN already marked done; completing archive`, and intentionally does **not** bump `updated_at`.
-- **Shared transition helper** added in `src/commands/transition.rs`: handles read/parse/status validation/mutate/timestamp/write for read-mutate-write commands. `clew start` now uses it too.
-- **Filesystem seams** added in `src/storage/fs.rs`: `archive_increment`, `read_path_md`, `write_path_md`.
-- **`path.md` helpers** added in `src/core/path.rs`: removes done entries and normalizes remaining known references to current `#NNNN-slug` while preserving annotations.
-- **`Done { id }` CLI arg widened** from `u32` to `String` in `src/cli.rs`, matching `start` and enabling slug lookup.
-- **Tests added** for done happy path, invalid transition, slug lookup, path removal + normalization, self-loop tolerance without timestamp bump, and unknown-field/body preservation.
+- **`clew done <id-or-slug>`** shipped in `1431a23`: resolves ID or slug, transitions `in_progress → done`, bumps `updated_at`, preserves frontmatter/body, archives from `.clew/increments/` to `.clew/archive/`, updates `path.md`, and prints `Done #NNNN` to stderr with empty stdout.
+- **Reviewer cleanup patch** prepared after `1431a23`:
+  - `transition::apply` now takes `root: &Path` so callers do the `.clew` root walk once.
+  - `AppliedTransition` now includes `already_archived`.
+  - Already-archived same-status `done` is now success with `warning: #NNNN already archived`, not `InvalidTransition done → done`.
+  - `done` now prepares path changes in memory, archives first, then writes `path.md`. If the path write fails, the terminal archive state is still correct and lint can catch stale path drift.
+  - `core::path` now has code TODOs documenting the intentionally narrow MVP parser: `remove` drops any line containing the target `#NNNN`, and `normalize` rewrites only the first reference per line.
+- **Tests added** for already-archived done success/warning and stale `path.md` cleanup.
 
 ## Next action
 
-Implement `clew abandon <id-or-slug> "reason"` as the next vertical slice. Reuse `commands::transition::apply`, but it needs to set `abandoned_reason` before serialization, so either extend the helper with a mutation closure or split the helper into a lower-level parsed-file transition seam. Side effects mirror `done`: archive the file and remove it from `path.md`; self-loop tolerance should warn `warning: #NNNN already marked abandoned; completing archive` and should not bump `updated_at`.
+Commit the cleanup patch, then implement `clew abandon <id-or-slug> "reason"` as the next vertical slice. Reuse `commands::transition::apply`, but it needs to set `abandoned_reason` before serialization, so either extend the helper with a mutation closure or split the helper into a lower-level parsed-file transition seam. Side effects mirror `done`: archive the file and remove it from `path.md`; self-loop tolerance should warn `warning: #NNNN already marked abandoned; completing archive`, and already-archived abandoned should warn `warning: #NNNN already archived`.
 
 ## Context worth carrying
 
-- Commit `1431a23` is the stable point for `clew done`.
-- `transition::apply` currently only changes `status` and `updated_at`. It returns `AppliedTransition { id, path, blocked_reason, self_loop }`. This was enough for `start` and `done`, but `abandon` likely needs the helper to support command-specific frontmatter mutation (`abandoned_reason`). Don’t shoehorn that logic into `done` or duplicate the old `start` body.
-- `done` updates `path.md` **before** archiving because it scans entries to normalize remaining references; this currently still includes the soon-to-be-archived done file, which is harmless because its line has already been removed. Keep an eye on this ordering if extracting a shared archive-side-effect helper.
-- `core::path::remove` is intentionally permissive and removes any line containing `#NNNN`. `core::path::normalize` only rewrites the first parseable `#NNNN[-slug]` reference per line. That matches current path format but is not a general markdown ref rewriter.
+- Stable commits before this cleanup: `1431a23` (`clew done`) and `28444a8` (prior relay update).
+- `transition::apply(root, query, allowed_from, to, tolerate_self_loop)` currently only changes `status` and `updated_at`. It returns `AppliedTransition { id, path, blocked_reason, self_loop, already_archived }`.
+- `AppliedTransition.blocked_reason` is still start-specific. Don’t keep adding one-off fields. `abandon` should push the helper toward a command-specific mutation/result shape.
+- `done` now scans/normalizes `path.md` before archive, archives if needed, then writes path. This order is intentional: archive correctness beats path advisory drift if a later write fails.
+- `core::path::remove` and `normalize` are pragmatic MVP helpers, not a markdown reference rewriting system. The TODOs are now in code, so this context is durable.
 - `fs::archive_increment` uses `std::fs::rename`, not `git mv`, by design. Clew mutates project state; git workflow remains user/agent-owned.
 - Output discipline remains: stdout = data; stderr = status/errors/warnings. Transition commands should keep stdout empty.
 - Self-loop tolerance remains limited to terminal-side-effect transitions (`done`/`abandon`/`reopen`). `start` still rejects already-`in_progress`.
@@ -36,4 +38,4 @@ Implement `clew abandon <id-or-slug> "reason"` as the next vertical slice. Reuse
 
 ## Drift from plan
 
-- `path.md` normalization is implemented pragmatically, not as a full parser/writer. It handles current bullet-style `#NNNN-slug` entries and preserves trailing annotations. That is enough for the MVP; revisit only if real path formats require broader reference rewriting.
+- Already-archived terminal self-loops are being treated as successful no-ops with a terse warning. This is more operator-friendly than surfacing `InvalidTransition done → done` when the requested terminal side effect is already complete.

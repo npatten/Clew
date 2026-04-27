@@ -3,7 +3,7 @@ use crate::core::increment::Status;
 use crate::error::ClewError;
 use crate::storage::fs;
 use chrono::{SecondsFormat, Utc};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub struct AppliedTransition {
@@ -11,29 +11,30 @@ pub struct AppliedTransition {
     pub path: PathBuf,
     pub blocked_reason: Option<String>,
     pub self_loop: bool,
+    pub already_archived: bool,
 }
 
 pub fn apply(
+    root: &Path,
     query: &str,
     allowed_from: &[Status],
     to: Status,
-    tolerate_unarchived_self_loop: bool,
+    tolerate_self_loop: bool,
 ) -> Result<AppliedTransition, ClewError> {
-    let cwd = std::env::current_dir().map_err(ClewError::Io)?;
-    let root = fs::find_clew_root(&cwd)?;
-
-    let path = fs::resolve(&root, query)?;
+    let path = fs::resolve(root, query)?;
     let contents = fs::read_file(&path)?;
     let mut parsed = frontmatter::parse(&contents)?;
 
     let from = parsed.increment.status.clone();
     let self_loop = from == to;
-    if self_loop && tolerate_unarchived_self_loop && !fs::is_archived(&path) {
+    let already_archived = fs::is_archived(&path);
+    if self_loop && tolerate_self_loop {
         return Ok(AppliedTransition {
             id: parsed.increment.id,
             path,
             blocked_reason: parsed.increment.blocked_reason,
             self_loop: true,
+            already_archived,
         });
     }
 
@@ -60,5 +61,6 @@ pub fn apply(
         path,
         blocked_reason,
         self_loop: false,
+        already_archived,
     })
 }

@@ -1234,3 +1234,149 @@ fn abandon_preserves_unknown_fields_and_body() {
     assert!(body.contains("# Title"));
     assert!(body.contains("- [ ] One"));
 }
+
+// ---------------------------------------------------------------------------
+// `clew reopen`
+// ---------------------------------------------------------------------------
+
+#[test]
+fn reopen_transitions_archived_done_to_todo_and_unarchives() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "archive",
+        "0001-a.md",
+        &fixture_with(1, "a", "done", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["reopen", "1"])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr(contains("Reopened #0001"));
+
+    assert!(!temp.path().join(".clew/archive/0001-a.md").exists());
+    let reopened = read_at(&temp, ".clew/increments/0001-a.md");
+    assert!(reopened.contains("status: todo"));
+    assert!(!reopened.contains("updated_at: 2026-04-20T10:00:00Z"));
+}
+
+#[test]
+fn reopen_accepts_slug_for_archived_abandoned_and_preserves_reason() {
+    let temp = empty_project();
+    temp.child(".clew/archive/0001-add-oauth.md")
+        .write_str("---\nid: 1\nstatus: abandoned\nabandoned_reason: superseded\ncreated_at: 2026-04-20T10:00:00Z\nupdated_at: 2026-04-20T10:00:00Z\n---\n# Add OAuth\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["reopen", "add-oauth"])
+        .assert()
+        .success()
+        .stderr(contains("Reopened #0001"));
+
+    assert!(!temp.path().join(".clew/archive/0001-add-oauth.md").exists());
+    let reopened = read_at(&temp, ".clew/increments/0001-add-oauth.md");
+    assert!(reopened.contains("status: todo"));
+    assert!(reopened.contains("abandoned_reason: superseded"));
+}
+
+#[test]
+fn reopen_self_loop_tolerates_unarchived_todo_without_bumping_timestamp() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "todo", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["reopen", "1"])
+        .assert()
+        .success()
+        .stderr(contains("warning: #0001 already reopened"))
+        .stderr(contains("Reopened #0001"));
+
+    let reopened = read_at(&temp, ".clew/increments/0001-a.md");
+    assert!(reopened.contains("status: todo"));
+    assert!(reopened.contains("updated_at: 2026-04-20T10:00:00Z"));
+}
+
+#[test]
+fn reopen_self_loop_tolerates_archived_todo_and_unarchives_without_bumping_timestamp() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "archive",
+        "0001-a.md",
+        &fixture_with(1, "a", "todo", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["reopen", "1"])
+        .assert()
+        .success()
+        .stderr(contains(
+            "warning: #0001 already marked todo; completing unarchive",
+        ))
+        .stderr(contains("Reopened #0001"));
+
+    assert!(!temp.path().join(".clew/archive/0001-a.md").exists());
+    let reopened = read_at(&temp, ".clew/increments/0001-a.md");
+    assert!(reopened.contains("status: todo"));
+    assert!(reopened.contains("updated_at: 2026-04-20T10:00:00Z"));
+}
+
+#[test]
+fn reopen_rejects_backlog() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "backlog", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["reopen", "1"])
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains("invalid status transition"))
+        .stderr(contains("backlog"));
+
+    assert!(temp.path().join(".clew/increments/0001-a.md").exists());
+}
+
+#[test]
+fn reopen_preserves_unknown_fields_and_body() {
+    let temp = empty_project();
+    let original = "---\nid: 1\nstatus: done\ncreated_at: 2026-04-20T10:00:00Z\nupdated_at: 2026-04-20T10:00:00Z\npriority: high\n---\n\n# Title\n\n- [x] One\n";
+    temp.child(".clew/archive/0001-title.md")
+        .write_str(original)
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["reopen", "1"])
+        .assert()
+        .success();
+
+    let body = read_at(&temp, ".clew/increments/0001-title.md");
+    assert!(body.contains("status: todo"));
+    assert!(body.contains("priority: high"));
+    assert!(body.contains("# Title"));
+    assert!(body.contains("- [x] One"));
+}

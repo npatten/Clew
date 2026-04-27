@@ -194,18 +194,36 @@ pub fn write_increment(path: &Path, contents: &str) -> Result<(), ClewError> {
 
 /// Move an increment from `.clew/increments/` to `.clew/archive/`.
 pub fn archive_increment(path: &Path) -> Result<PathBuf, ClewError> {
+    move_between_increment_dirs(path, ARCHIVE_SUBDIR)
+}
+
+/// Move an increment from `.clew/archive/` to `.clew/increments/`.
+pub fn unarchive_increment(path: &Path) -> Result<PathBuf, ClewError> {
+    move_between_increment_dirs(path, INCREMENTS_SUBDIR)
+}
+
+fn move_between_increment_dirs(
+    path: &Path,
+    destination_subdir: &str,
+) -> Result<PathBuf, ClewError> {
     let filename = path
         .file_name()
         .ok_or_else(|| ClewError::Io(std::io::Error::other("increment path has no filename")))?;
-    let archive_dir = path
+    let destination_dir = path
         .parent()
         .and_then(|p| p.parent())
-        .map(|clew_dir| clew_dir.join(ARCHIVE_SUBDIR))
+        .map(|clew_dir| clew_dir.join(destination_subdir))
         .ok_or_else(|| ClewError::Io(std::io::Error::other("increment path has no parent")))?;
-    std::fs::create_dir_all(&archive_dir).map_err(ClewError::Io)?;
-    let archived = archive_dir.join(filename);
-    std::fs::rename(path, &archived).map_err(ClewError::Io)?;
-    Ok(archived)
+    std::fs::create_dir_all(&destination_dir).map_err(ClewError::Io)?;
+    let destination = destination_dir.join(filename);
+    if destination.exists() {
+        return Err(ClewError::Io(std::io::Error::new(
+            std::io::ErrorKind::AlreadyExists,
+            format!("destination already exists: {}", destination.display()),
+        )));
+    }
+    std::fs::rename(path, &destination).map_err(ClewError::Io)?;
+    Ok(destination)
 }
 
 pub fn read_path_md(root: &Path) -> Result<String, ClewError> {
@@ -263,6 +281,50 @@ mod tests {
         assert_eq!(
             resolved.file_name().and_then(|s| s.to_str()),
             Some("0042-real.md")
+        );
+    }
+
+    #[test]
+    fn archive_increment_errors_before_overwriting_existing_destination() {
+        let temp = assert_fs::TempDir::new().unwrap();
+        let increments = temp.path().join(".clew/increments");
+        let archive = temp.path().join(".clew/archive");
+        std::fs::create_dir_all(&increments).unwrap();
+        std::fs::create_dir_all(&archive).unwrap();
+        let source = increments.join("0001-a.md");
+        let destination = archive.join("0001-a.md");
+        std::fs::write(&source, "source").unwrap();
+        std::fs::write(&destination, "destination").unwrap();
+
+        let err = archive_increment(&source).unwrap_err();
+
+        assert!(matches!(err, ClewError::Io(e) if e.kind() == std::io::ErrorKind::AlreadyExists));
+        assert_eq!(std::fs::read_to_string(&source).unwrap(), "source");
+        assert_eq!(
+            std::fs::read_to_string(&destination).unwrap(),
+            "destination"
+        );
+    }
+
+    #[test]
+    fn unarchive_increment_errors_before_overwriting_existing_destination() {
+        let temp = assert_fs::TempDir::new().unwrap();
+        let increments = temp.path().join(".clew/increments");
+        let archive = temp.path().join(".clew/archive");
+        std::fs::create_dir_all(&increments).unwrap();
+        std::fs::create_dir_all(&archive).unwrap();
+        let source = archive.join("0001-a.md");
+        let destination = increments.join("0001-a.md");
+        std::fs::write(&source, "source").unwrap();
+        std::fs::write(&destination, "destination").unwrap();
+
+        let err = unarchive_increment(&source).unwrap_err();
+
+        assert!(matches!(err, ClewError::Io(e) if e.kind() == std::io::ErrorKind::AlreadyExists));
+        assert_eq!(std::fs::read_to_string(&source).unwrap(), "source");
+        assert_eq!(
+            std::fs::read_to_string(&destination).unwrap(),
+            "destination"
         );
     }
 }

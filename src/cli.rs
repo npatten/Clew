@@ -49,7 +49,7 @@ pub enum Command {
     /// Abandon an increment with an optional reason
     Abandon { id: String, reason: Option<String> },
     /// Reopen an archived increment
-    Reopen { id: u32 },
+    Reopen { id: String },
     /// Show or start the next increment
     Next {
         #[arg(long)]
@@ -86,6 +86,7 @@ impl Cli {
             Some(Command::Abandon { id, reason }) => {
                 crate::commands::abandon::run(&id, reason.as_deref())
             }
+            Some(Command::Reopen { id }) => crate::commands::reopen::run(&id),
             Some(Command::Next { .. }) => crate::commands::next::run(),
             Some(_) => Err(ClewError::Unimplemented),
         }

@@ -36,7 +36,9 @@ pub struct Increment {
     pub abandoned_reason: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
+    #[serde(with = "clew_timestamp")]
     pub created_at: DateTime<Utc>,
+    #[serde(with = "clew_timestamp")]
     pub updated_at: DateTime<Utc>,
 
     /// Preserves any frontmatter fields the CLI doesn't know about.
@@ -45,4 +47,46 @@ pub struct Increment {
     /// markdown+frontmatter output IS our agent-facing API and must not drift.
     #[serde(flatten)]
     pub extra: BTreeMap<String, yaml_serde::Value>,
+}
+
+mod clew_timestamp {
+    use chrono::{DateTime, Utc};
+    use serde::{de::Error, Deserialize, Deserializer, Serializer};
+
+    const FORMAT: &str = "%Y-%m-%dT%H:%M:%SZ";
+
+    pub fn serialize<S>(timestamp: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&timestamp.format(FORMAT).to_string())
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+
+        if !value.ends_with('Z') {
+            return Err(D::Error::custom(
+                "timestamp must be UTC with a 'Z' suffix, e.g. 2026-04-26T10:00:00Z",
+            ));
+        }
+
+        if value.contains('.') {
+            return Err(D::Error::custom(
+                "timestamp must use second precision; subseconds are not allowed",
+            ));
+        }
+
+        let parsed = DateTime::parse_from_rfc3339(&value).map_err(D::Error::custom)?;
+        if parsed.timestamp_subsec_nanos() != 0 {
+            return Err(D::Error::custom(
+                "timestamp must use second precision; subseconds are not allowed",
+            ));
+        }
+
+        Ok(parsed.with_timezone(&Utc))
+    }
 }

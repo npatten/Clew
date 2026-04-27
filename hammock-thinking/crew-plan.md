@@ -131,7 +131,7 @@ CLI-managed fields: `id`, `status`, `created_at`, `updated_at`. CLI-aware: `pare
 ### Hybrid: sequential numeric ID + slug filename
 
 - Filename: `0042-add-oauth-routes.md`
-- ID in frontmatter: `id: 0042`
+- ID in frontmatter: `id: 42`
 - Canonical reference in prose: `#0042`
 - CLI accepts `clew show 42`, `clew show 0042`, `clew show add-oauth-routes`
 

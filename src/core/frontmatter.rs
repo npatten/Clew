@@ -233,6 +233,30 @@ mixed:\n- 1\n- two\n- true\n\
         assert_eq!(parsed.increment.updated_at, expected);
     }
 
+    #[rstest]
+    #[case("2026-04-26T12:00:00+02:00", "non-UTC offset")]
+    #[case("2026-04-26T10:00:00.123Z", "subsecond precision")]
+    #[case("2026-04-26T10:00:00", "missing Z suffix")]
+    fn invalid_timestamp_formats_error(#[case] timestamp: &str, #[case] _desc: &str) {
+        let input = format!(
+            "---\nid: 1\nstatus: backlog\ncreated_at: \"{}\"\nupdated_at: \"2026-04-26T10:00:00Z\"\n---\n",
+            timestamp
+        );
+        let err = parse(&input).expect_err("should reject invalid timestamp format");
+        assert!(matches!(err, ClewError::Frontmatter(_)));
+    }
+
+    #[test]
+    fn timestamp_serialization_uses_utc_second_precision() {
+        let input = minimal_frontmatter("");
+        let serialized = serialize(&parse(&input).unwrap()).unwrap();
+
+        assert!(serialized.contains("created_at: 2026-04-26T10:00:00Z"));
+        assert!(serialized.contains("updated_at: 2026-04-26T10:00:00Z"));
+        assert!(!serialized.contains(".000"));
+        assert!(!serialized.contains("+00:00"));
+    }
+
     #[test]
     fn snapshot_round_trip() {
         // NOTE: YAML treats bare `#` after a space as a comment — reference values

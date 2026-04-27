@@ -7,7 +7,7 @@ updated_at: 2026-04-26T23:00:00Z
 
 ## Status
 
-Scaffolding committed (6c002a8) and review feedback addressed (1e3694d). 17 unit tests + 1 integration test pass, clippy clean, fmt clean. The frontmatter parser is the load-bearing piece and is working correctly with deterministic output and full unknown-field round-trip preservation (now value-asserted, not just key-asserted).
+Scaffolding committed (6c002a8), review feedback addressed (1e3694d), and final review nits fixed. 21 unit tests + 1 integration test pass, clippy clean, fmt clean. The frontmatter parser is the load-bearing piece and is working correctly with deterministic output, full unknown-field round-trip preservation (now value-asserted, not just key-asserted), and strict timestamp validation.
 
 ## Just finished
 
@@ -21,7 +21,9 @@ Scaffolding committed (6c002a8) and review feedback addressed (1e3694d). 17 unit
   - **Stub commands return `Err(ClewError::Unimplemented)`** instead of panicking, so the typed exit-code path (panic → 1) is exercised.
   - Smoke test now asserts stdout contains `clew` + `CARGO_PKG_VERSION`.
   - `cargo fmt` clean.
-- **Deferred from review:** strict timestamp serde (reject non-`Z` offsets, reject subseconds). The CLI is the only writer; `chrono`'s default serde produces canonical form. If a human hand-edits a timestamp wrong, that's a `clew lint` concern later, not a parser concern now. Document the format rule in `.clew/README.md` when that template is fleshed out.
+- Final review nits:
+  - Fixed stale `crew-plan.md` ID example so frontmatter says `id: 42`, matching the plain-integer policy.
+  - Added strict timestamp serde: timestamps must use UTC `Z` suffix and second precision; non-`Z` offsets, missing `Z`, and subseconds are rejected.
 
 ## Next action
 
@@ -42,7 +44,7 @@ Implement `clew show <id>` as the first vertical slice. This means:
 - **`id` and `parent` in frontmatter are plain integers** (`id: 42`, not `id: 0042`). Zero-padding is presentation-only: filenames (`0042-add-oauth-routes.md`) and prose references (`#0042`). YAML 1.2 parses `0042` as a string anyway.
 - **`INSTA_UPDATE=always cargo test`** accepts new snapshots without needing the `cargo-insta` CLI.
 - **Snapshot location**: `src/core/snapshots/clew__core__frontmatter__tests__snapshot_round_trip.snap`. Delete `.snap.new` after accepting.
-- **Timestamps round-trip via `chrono`'s default serde.** Output is unquoted `2026-04-20T10:00:00Z`. Strict format enforcement (reject `+02:00` offsets, reject subseconds) is deferred — `clew lint` concern, not a parser concern.
+- **Timestamps use strict custom serde.** Output is unquoted `2026-04-20T10:00:00Z`. The parser rejects non-`Z` offsets, missing `Z`, and subseconds.
 
 ## Open questions
 

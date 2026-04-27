@@ -33,6 +33,9 @@ pub enum ClewError {
     #[error("no todo increments found")]
     NoNextIncrement,
 
+    #[error("lint found {0} issue(s)")]
+    LintFailed(usize),
+
     #[error("io: {0}")]
     Io(#[from] std::io::Error),
 

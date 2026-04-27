@@ -90,6 +90,7 @@ impl Cli {
             }
             Some(Command::Reopen { id }) => crate::commands::reopen::run(&id),
             Some(Command::Next { start }) => crate::commands::next::run(start),
+            Some(Command::Lint) => crate::commands::lint::run(),
             Some(_) => Err(ClewError::Unimplemented),
         }
     }

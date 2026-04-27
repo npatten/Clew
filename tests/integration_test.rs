@@ -1707,3 +1707,197 @@ fn next_errors_on_stale_path_reference() {
         .code(1)
         .stderr(contains("increment not found: 9"));
 }
+
+// ---------------------------------------------------------------------------
+// `clew lint`
+// ---------------------------------------------------------------------------
+
+#[test]
+fn lint_succeeds_when_project_has_no_drift() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "todo", None),
+    );
+    temp.child(".clew/path.md")
+        .write_str("# Path\n\n- #0001-a\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("lint")
+        .assert()
+        .success()
+        .stderr(contains("No lint issues found"));
+}
+
+#[test]
+fn lint_flags_path_references_that_cannot_be_selected() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-in-progress.md",
+        &fixture_with(1, "in-progress", "in_progress", None),
+    );
+    write_increment(
+        &temp,
+        "archive",
+        "0002-done.md",
+        &fixture_with(2, "done", "done", None),
+    );
+    temp.child(".clew/path.md")
+        .write_str("# Path\n\n- #0001-in-progress\n- #0002-done\n- #0009-missing\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("lint")
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains(
+            "path.md references #0001-in-progress with status in_progress; expected todo",
+        ))
+        .stderr(contains("path.md references archived #0002-done"))
+        .stderr(contains("path.md references missing #0009"))
+        .stderr(contains("error: lint found 3 issue(s)"));
+}
+
+#[test]
+fn lint_flags_terminal_statuses_left_in_increments() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-finished.md",
+        &fixture_with(1, "finished", "done", None),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0002-dropped.md",
+        &fixture_with(2, "dropped", "abandoned", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("lint")
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains(
+            "#0001-finished has status done but is not archived; run `clew done 0001`",
+        ))
+        .stderr(contains(
+            "#0002-dropped has status abandoned but is not archived; run `clew abandon 0002`",
+        ));
+}
+
+#[test]
+fn lint_flags_todo_items_missing_from_non_empty_path() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-listed.md",
+        &fixture_with(1, "listed", "todo", None),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0002-missing.md",
+        &fixture_with(2, "missing", "todo", None),
+    );
+    temp.child(".clew/path.md")
+        .write_str("# Path\n\n- #0001-listed\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("lint")
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains(
+            "#0002-missing is todo but missing from path.md priority order",
+        ));
+}
+
+#[test]
+fn lint_flags_archived_non_terminal_without_bad_reopen_hint() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "archive",
+        "0001-not-terminal.md",
+        &fixture_with(1, "not-terminal", "backlog", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("lint")
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains(
+            "#0001-not-terminal is archived with status backlog",
+        ))
+        .stderr(contains(
+            "move it back to .clew/increments/ or change status to done/abandoned",
+        ));
+}
+
+#[test]
+fn lint_flags_filename_frontmatter_id_mismatch() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-wrong-id.md",
+        &fixture_with(2, "wrong-id", "todo", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("lint")
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains(
+            "filename #0001-wrong-id has frontmatter id 2; make them match before running transition commands",
+        ));
+}
+
+#[test]
+fn lint_flags_stale_path_reference_per_line() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-current.md",
+        &fixture_with(1, "current", "todo", None),
+    );
+    temp.child(".clew/path.md")
+        .write_str("# Path\n\n- #0001-old\n<!-- canonical elsewhere #0001-current -->\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("lint")
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains(
+            "path.md reference #0001 is not canonical; expected #0001-current",
+        ));
+}

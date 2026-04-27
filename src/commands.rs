@@ -1,6 +1,7 @@
 pub mod abandon;
 pub mod block;
 pub mod done;
+pub mod lint;
 pub mod list;
 pub mod new;
 pub mod next;

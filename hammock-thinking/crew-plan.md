@@ -336,10 +336,10 @@ One- or two-sentence skim. Where things stand.
 - Bullets summarizing what got done this session.
 - Reference commits by short hash (a3f2..b1d4).
 
-## Next action
+## Next milestone
 
-The most concrete possible description of the immediate next move.
-Includes file paths and approach. Not a task list — _the_ next thing.
+The next product milestone/increment of work, not process mechanics like asking for review, running the gate, or committing.
+Includes file paths and approach where useful. Not a task list — the next coherent chunk.
 
 ## Context worth carrying
 
@@ -368,7 +368,7 @@ A typical session:
 
 1. Read `path.md` → find next increment.
 2. Read the increment file → plan, tasks, criteria.
-3. Read `relay.md` → current focus, next action, context.
+3. Read `relay.md` → current focus, next milestone, context.
 4. Work.
 5. `clew relay` at session end.
 6. If increment complete: `clew done {id}` (also auto-removes from path).

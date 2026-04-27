@@ -1337,6 +1337,52 @@ fn reopen_self_loop_tolerates_archived_todo_and_unarchives_without_bumping_times
 }
 
 #[test]
+fn reopen_tolerates_unarchived_done_drift() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "done", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["reopen", "1"])
+        .assert()
+        .success()
+        .stderr(contains("Reopened #0001"));
+
+    let reopened = read_at(&temp, ".clew/increments/0001-a.md");
+    assert!(reopened.contains("status: todo"));
+    assert!(!reopened.contains("updated_at: 2026-04-20T10:00:00Z"));
+}
+
+#[test]
+fn reopen_tolerates_unarchived_abandoned_drift() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "abandoned", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["reopen", "1"])
+        .assert()
+        .success()
+        .stderr(contains("Reopened #0001"));
+
+    let reopened = read_at(&temp, ".clew/increments/0001-a.md");
+    assert!(reopened.contains("status: todo"));
+    assert!(!reopened.contains("updated_at: 2026-04-20T10:00:00Z"));
+}
+
+#[test]
 fn reopen_rejects_backlog() {
     let temp = empty_project();
     write_increment(

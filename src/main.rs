@@ -9,7 +9,7 @@ fn main() -> ExitCode {
                 clew::ClewError::NotFound(_)
                 | clew::ClewError::ClewRootNotFound
                 | clew::ClewError::InvalidTransition { .. }
-                | clew::ClewError::SlugCollision(_)
+                | clew::ClewError::SlugCollision { .. }
                 | clew::ClewError::Unimplemented => ExitCode::from(1),
                 clew::ClewError::Io(_) | clew::ClewError::Frontmatter(_) => ExitCode::from(2),
             }

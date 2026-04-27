@@ -13,8 +13,8 @@ pub enum ClewError {
     #[error("invalid status transition: {from} → {to}")]
     InvalidTransition { from: String, to: String },
 
-    #[error("slug collision: '{0}' is already used")]
-    SlugCollision(String),
+    #[error("slug '{slug}' is already used by #{existing}\n       try a more specific title")]
+    SlugCollision { slug: String, existing: String },
 
     #[error("frontmatter parse error: {0}")]
     Frontmatter(String),

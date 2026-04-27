@@ -88,6 +88,65 @@ pub fn read_file(path: &Path) -> Result<String, ClewError> {
     std::fs::read_to_string(path).map_err(ClewError::Io)
 }
 
+/// A parsed `NNNN-slug.md` filename from `increments/` or `archive/`.
+#[derive(Debug, Clone)]
+pub struct FileEntry {
+    pub id: u32,
+    pub slug: String,
+    pub path: PathBuf,
+}
+
+/// Scan `<root>/.clew/increments/` and `<root>/.clew/archive/` for all
+/// `NNNN-slug.md` files. Filenames that don't match the canonical shape are
+/// skipped silently. Used by `clew new` for ID allocation, slug-collision
+/// checks, and parent-existence checks (single scan, three queries).
+pub fn scan(root: &Path) -> Result<Vec<FileEntry>, ClewError> {
+    let mut entries = Vec::new();
+    for subdir in [INCREMENTS_SUBDIR, ARCHIVE_SUBDIR] {
+        let dir = root.join(CLEW_DIR).join(subdir);
+        let read = match std::fs::read_dir(&dir) {
+            Ok(e) => e,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(e) => return Err(ClewError::Io(e)),
+        };
+        for entry in read {
+            let entry = entry?;
+            let path = entry.path();
+            if path.extension().and_then(|s| s.to_str()) != Some("md") {
+                continue;
+            }
+            let stem = match path.file_stem().and_then(|s| s.to_str()) {
+                Some(s) => s,
+                None => continue,
+            };
+            let Some((id, slug)) = split_filename(stem) else {
+                continue;
+            };
+            entries.push(FileEntry {
+                id,
+                slug: slug.to_string(),
+                path,
+            });
+        }
+    }
+    Ok(entries)
+}
+
+/// Write a new increment file under `<root>/.clew/increments/`. Creates the
+/// directory if missing. The caller is responsible for building `filename`
+/// (canonical `NNNN-slug.md` shape) and `contents` (frontmatter + body).
+pub fn write_new_increment(
+    root: &Path,
+    filename: &str,
+    contents: &str,
+) -> Result<PathBuf, ClewError> {
+    let dir = root.join(CLEW_DIR).join(INCREMENTS_SUBDIR);
+    std::fs::create_dir_all(&dir).map_err(ClewError::Io)?;
+    let path = dir.join(filename);
+    std::fs::write(&path, contents).map_err(ClewError::Io)?;
+    Ok(path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

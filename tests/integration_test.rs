@@ -130,3 +130,213 @@ fn show_outside_clew_project_errors() {
         .code(1)
         .stderr(contains(".clew/"));
 }
+
+// ---------------------------------------------------------------------------
+// `clew new`
+// ---------------------------------------------------------------------------
+
+fn empty_project() -> assert_fs::TempDir {
+    let temp = assert_fs::TempDir::new().unwrap();
+    temp.child(".clew/increments").create_dir_all().unwrap();
+    temp.child(".clew/archive").create_dir_all().unwrap();
+    temp
+}
+
+fn read_increment(temp: &assert_fs::TempDir, filename: &str) -> String {
+    std::fs::read_to_string(temp.path().join(".clew/increments").join(filename)).unwrap()
+}
+
+#[test]
+fn new_creates_backlog_increment_with_padded_id() {
+    let temp = empty_project();
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "Add OAuth"])
+        .assert()
+        .success()
+        .stdout("0001\n");
+
+    let body = read_increment(&temp, "0001-add-oauth.md");
+    assert!(body.contains("id: 1"));
+    assert!(body.contains("status: backlog"));
+    assert!(body.contains("created_at: "));
+    assert!(body.contains("updated_at: "));
+}
+
+#[test]
+fn new_with_ready_flag_starts_in_todo() {
+    let temp = empty_project();
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "Add OAuth", "--ready"])
+        .assert()
+        .success();
+
+    let body = read_increment(&temp, "0001-add-oauth.md");
+    assert!(body.contains("status: todo"));
+}
+
+#[test]
+fn new_allocates_sequential_ids() {
+    let temp = empty_project();
+    for (title, expected_id) in [("First", "0001"), ("Second", "0002"), ("Third", "0003")] {
+        Command::cargo_bin("clew")
+            .unwrap()
+            .current_dir(temp.path())
+            .args(["new", title])
+            .assert()
+            .success()
+            .stdout(format!("{expected_id}\n"));
+    }
+}
+
+#[test]
+fn new_id_allocation_includes_archive() {
+    // Plan §"Allocation": archived IDs can be higher than active ones; the
+    // counter must scan both subdirs so we never reuse an ID.
+    let temp = empty_project();
+    temp.child(".clew/archive/0007-old-work.md")
+        .write_str("---\nid: 7\nstatus: done\ncreated_at: 2026-04-20T10:00:00Z\nupdated_at: 2026-04-20T10:00:00Z\n---\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "Next"])
+        .assert()
+        .success()
+        .stdout("0008\n");
+}
+
+#[test]
+fn new_with_parent_writes_parent_field() {
+    let temp = empty_project();
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "Parent epic"])
+        .assert()
+        .success();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "Child increment", "--parent", "1"])
+        .assert()
+        .success();
+
+    let body = read_increment(&temp, "0002-child-increment.md");
+    assert!(body.contains("parent: 1"));
+}
+
+#[test]
+fn new_with_missing_parent_errors() {
+    let temp = empty_project();
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "Orphan", "--parent", "999"])
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains("not found"))
+        .stderr(contains("parent #0999"));
+}
+
+#[test]
+fn new_slug_collision_in_increments_errors() {
+    let temp = empty_project();
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "Add OAuth"])
+        .assert()
+        .success();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "Add OAuth"])
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains("slug 'add-oauth'"))
+        .stderr(contains("0001-add-oauth.md"))
+        .stderr(contains("try a more specific title"));
+}
+
+#[test]
+fn new_slug_collision_against_archive_errors() {
+    // Plan §"Slug rules": once a slug is used, it's reserved forever — the
+    // collision check must span archive/ as well, otherwise reopen could
+    // produce duplicates.
+    let temp = empty_project();
+    temp.child(".clew/archive/0001-add-oauth.md")
+        .write_str("---\nid: 1\nstatus: done\ncreated_at: 2026-04-20T10:00:00Z\nupdated_at: 2026-04-20T10:00:00Z\n---\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "Add OAuth"])
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains("slug 'add-oauth'"));
+}
+
+#[test]
+fn new_walks_up_to_find_clew_root() {
+    let temp = empty_project();
+    let nested = temp.child("a/b/c");
+    nested.create_dir_all().unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(nested.path())
+        .args(["new", "From subdir"])
+        .assert()
+        .success()
+        .stdout("0001\n");
+
+    assert!(temp
+        .path()
+        .join(".clew/increments/0001-from-subdir.md")
+        .exists());
+}
+
+#[test]
+fn new_outside_clew_project_errors() {
+    let temp = assert_fs::TempDir::new().unwrap();
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "Anything"])
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains(".clew/"));
+}
+
+#[test]
+fn new_output_is_pipeable_to_show() {
+    // The "stdout = data" principle: `clew new` prints just the ID so it can
+    // feed into other commands that accept ID lookups.
+    let temp = empty_project();
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "Pipeable"])
+        .assert()
+        .success();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["show", "0001"])
+        .assert()
+        .success()
+        .stdout(contains("id: 1"));
+}

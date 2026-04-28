@@ -4,7 +4,7 @@ This directory holds Clew project state (increments, archive, path).
 
 ## Creating increments
 
-Create an empty backlog item:
+Create a backlog item with a title heading:
 
 ```bash
 clew new "Add OAuth routes"
@@ -24,7 +24,7 @@ Why this increment matters.
 EOF
 ```
 
-Clew writes frontmatter itself; stdin is body content only.
+Clew writes frontmatter itself; stdin is body content only. Passing stdin replaces the default title-heading body.
 
 ## Reviewing archive moves
 

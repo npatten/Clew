@@ -303,11 +303,12 @@ fn new_creates_backlog_increment_with_padded_id() {
         .success()
         .stdout("0001\n");
 
-    let body = read_increment(&temp, "0001-add-oauth.md");
-    assert!(body.contains("id: 1"));
-    assert!(body.contains("status: backlog"));
-    assert!(body.contains("created_at: "));
-    assert!(body.contains("updated_at: "));
+    let contents = read_increment(&temp, "0001-add-oauth.md");
+    assert!(contents.contains("id: 1"));
+    assert!(contents.contains("status: backlog"));
+    assert!(contents.contains("created_at: "));
+    assert!(contents.contains("updated_at: "));
+    assert_eq!(increment_body(&contents), "# Add OAuth\n\n");
 }
 
 #[test]
@@ -346,7 +347,7 @@ fn new_reads_heredoc_equivalent_stdin_body() {
 }
 
 #[test]
-fn new_with_empty_stdin_writes_empty_body() {
+fn new_with_empty_stdin_writes_title_heading() {
     let temp = empty_project();
 
     Command::cargo_bin("clew")
@@ -358,7 +359,7 @@ fn new_with_empty_stdin_writes_empty_body() {
         .success();
 
     let contents = read_increment(&temp, "0001-empty-stdin.md");
-    assert_eq!(increment_body(&contents), "");
+    assert_eq!(increment_body(&contents), "# Empty stdin\n\n");
 }
 
 #[test]
@@ -437,10 +438,10 @@ fn new_allows_frontmatter_delimiter_later_in_stdin_body() {
 }
 
 #[test]
-fn new_without_stdin_in_test_harness_writes_empty_body() {
+fn new_without_stdin_in_test_harness_writes_title_heading() {
     // assert_cmd does not allocate a TTY, so this covers the common agent/test
     // harness path where stdin is non-TTY but empty. The interactive TTY path
-    // should be manually verified with `./clew new "Manual empty body"`.
+    // should be manually verified with `./clew new "Manual title heading"`.
     let temp = empty_project();
 
     Command::cargo_bin("clew")
@@ -452,7 +453,7 @@ fn new_without_stdin_in_test_harness_writes_empty_body() {
         .success();
 
     let contents = read_increment(&temp, "0001-no-redirected-stdin.md");
-    assert_eq!(increment_body(&contents), "");
+    assert_eq!(increment_body(&contents), "# No redirected stdin\n\n");
 }
 
 #[test]
@@ -1149,7 +1150,8 @@ fn new_output_is_pipeable_to_show() {
         .args(["show", "0001"])
         .assert()
         .success()
-        .stdout(contains("id: 1"));
+        .stdout(contains("id: 1"))
+        .stdout(contains("# Pipeable"));
 }
 
 // ---------------------------------------------------------------------------

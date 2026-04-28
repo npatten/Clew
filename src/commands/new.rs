@@ -36,6 +36,11 @@ pub fn run(title: &str, ready: bool, parent: Option<u32>) -> Result<(), ClewErro
     }
 
     let body = read_stdin_body()?;
+    let body = if body.is_empty() {
+        format!("# {title}\n\n")
+    } else {
+        body
+    };
 
     let next_id = entries.iter().map(|e| e.id).max().map_or(1, |m| m + 1);
     // Truncate to whole-second precision to match the frontmatter format

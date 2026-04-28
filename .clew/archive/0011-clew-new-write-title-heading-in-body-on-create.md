@@ -1,8 +1,8 @@
 ---
 id: 11
-status: backlog
+status: done
 created_at: 2026-04-28T03:43:06Z
-updated_at: 2026-04-28T03:43:06Z
+updated_at: 2026-04-28T05:12:18Z
 ---
 ## Goal
 

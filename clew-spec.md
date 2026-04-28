@@ -8,11 +8,11 @@ last_major_update: 2026-04-28
 
 ## Revisions
 
+- 2026-04-28 — `clew new` now writes a default `# Title` body when no body content is supplied, so freshly-created increments show their title in raw markdown.
 - 2026-04-28 — archive/reopen moves stay plain filesystem moves, not `git mv`; Clew must not mutate the git index, and reviewers can stage with `git add -A` to see renames.
 - 2026-04-28 — relay (`relay.md` + `clew relay`) pulled out of the design; in practice increments themselves are carrying cross-session context well enough that the rolling relay file added noise without earning its keep. Design parked under #0015 in case we revive it.
 - 2026-04-28 — `clew list` default includes the active working set (`backlog`, `todo`, `in_progress`); `-a`/`--all` adds archived terminal work for history scans.
 - 2026-04-28 — `clew new` accepts non-TTY stdin as increment body so agents can create titled, fully-described backlog items in one shell call.
-- 2026-04-27 — direct frontmatter edit is first-class; `clew promote` deferred (pure-metadata transitions have no side effects to manage). Self-loop tolerance added for `done`/`abandon`/`reopen` so hand-edit-then-CLI flows complete cleanly.
 
 _Older entries pruned; use `git log hammock-thinking/crew-plan.md` for full history._
 
@@ -343,7 +343,7 @@ Cross-session context lives inside the active increment file (decisions, gotchas
 ## CLI sketch
 
 - `clew init` — scaffold `.clew/` in the current directory: creates `increments/`, `archive/`, empty `path.md`, and a templated `README.md`. Also creates `#0000-bootstrap-clew` as a real setup task (instructs the user to copy the harness-integration section from `.clew/README.md` into their `AGENTS.md` / `CLAUDE.md`, then run `clew done 0000`). The bootstrap takes `#0000` so the user's first real increment is `#0001`.
-- `clew new "<title>"` — creates in `backlog` (or `todo` with `--ready`). Optional `--parent <id>` flag to link to a parent increment. If stdin is non-TTY, reads it verbatim as the increment body; stdin is body-only, and leading frontmatter delimiters are rejected.
+- `clew new "<title>"` — creates in `backlog` (or `todo` with `--ready`) with a default `# <title>` body. Optional `--parent <id>` flag to link to a parent increment. If stdin is non-TTY and contains body content, reads it verbatim as the increment body instead; stdin is body-only, and leading frontmatter delimiters are rejected.
 - `clew show <id>` — accepts numeric ID or slug. Default output: raw markdown (frontmatter + body) to stdout. In an interactive TTY, opens the file in the configured editor instead. `--json` optional for structured output.
 - `clew list [--tag X] [--status Y] [-a|--all]` — filtered listing.
   - **Default:** `backlog + todo + in_progress` (non-archived, non-terminal working set).

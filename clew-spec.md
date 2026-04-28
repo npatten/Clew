@@ -8,6 +8,7 @@ last_major_update: 2026-04-28
 
 ## Revisions
 
+- 2026-04-28 — archive/reopen moves stay plain filesystem moves, not `git mv`; Clew must not mutate the git index, and reviewers can stage with `git add -A` to see renames.
 - 2026-04-28 — relay (`relay.md` + `clew relay`) pulled out of the design; in practice increments themselves are carrying cross-session context well enough that the rolling relay file added noise without earning its keep. Design parked under #0015 in case we revive it.
 - 2026-04-28 — `clew list` default includes the active working set (`backlog`, `todo`, `in_progress`); `-a`/`--all` adds archived terminal work for history scans.
 - 2026-04-28 — `clew new` accepts non-TTY stdin as increment body so agents can create titled, fully-described backlog items in one shell call.
@@ -56,7 +57,7 @@ Guiding philosophy: [Simple Made Easy (Hickey)](https://www.youtube.com/watch?v=
 - **Task** — The most atomic unit of work. A single action or reminder. Lives as a checkbox inside an increment, doesn't merit it's own file.
 - **Increment** — A standalone unit of work containing zero or more tasks. When completed, the goal is for the codebase to be stable, tested, linted, and safely committable. The unit of work an agent typically completes in a session. _[1 session : 1 Increment] is an encouraged pattern, not a requirement._ An increment may have a parent increment; a parent with multiple children forms an epic (a larger body of work that must ship together).
 - **Path** — The hand-curated priority order across in-flight increments, expressed in `.clew/path.md`. Line order = priority.
-- **Archive** — `.clew/archive/`, the resting place for `done` or `abandoned` increments. Files are moved via `git mv`, preserving history. Reopening moves them back.
+- **Archive** — `.clew/archive/`, the resting place for `done` or `abandoned` increments. Files are moved there on archive and back on reopen. Git recognizes those moves as renames when staged or diffed with rename detection.
 
 ---
 
@@ -89,7 +90,7 @@ All state lives in plain markdown files with YAML frontmatter. Reasoning:
 - **Hidden directory** (`.clew/`) — matches `.git/`, `.github/`, etc. Tooling/metadata convention. **Commit it.** `.clew/` is the project's shared state; treat it like source. Don't `.gitignore` it.
 - **Single `increments/` directory** — all items are increments. 
 - WIP: Parent-child relationships are still being designed. An increment with children is semantically an epic (a larger body of work that must ship together), but it's stored and treated like any other increment.
-- **Archive on done** — completed or abandoned increments move to `.clew/archive/`. Keeps working set small; preserves git history via `git mv`. Reopening (`clew reopen`) moves them back.
+- **Archive on done** — completed or abandoned increments move to `.clew/archive/`. Keeps working set small; preserves git history via normal rename detection once staged. Reopening (`clew reopen`) moves them back.
 - **User-level config lives elsewhere.** Editor preferences and other per-user settings live at `~/.config/clew/config.toml` (platform-correct path via the `directories` crate), NOT in `.clew/`. No project level config currently supported.
 
 ### Tasks live inside increments
@@ -428,7 +429,29 @@ Clew never invokes `git commit` on the user's behalf. Not on `clew done`, not on
 - A failing test or lint between Clew state changes shouldn't be hidden inside an auto-commit; the agent should see it and decide.
 - Clew owns _project state_, not _git workflow_. Mixing the two creates surprise and reduces the user's trust.
 
-The agent or human is always the one running `git commit`. Clew's CLI output makes this easy: `clew done` mutates the file (`git mv` to archive, etc.) and leaves the changes staged-or-unstaged for the user's normal commit flow.
+The agent or human is always the one running `git commit`. Clew's CLI output makes this easy: `clew done` mutates files and leaves the changes unstaged for the user's normal commit flow.
+
+### No index mutation
+
+Clew does not run `git add`, `git mv`, `git reset`, or any command that mutates the git index. Archive transitions use filesystem moves (`rename`):
+
+- `clew done` / `clew abandon`: `.clew/increments/NNNN-slug.md` → `.clew/archive/NNNN-slug.md`
+- `clew reopen`: `.clew/archive/NNNN-slug.md` → `.clew/increments/NNNN-slug.md`
+
+The cost: immediately after the command, `git status --short` may show a deleted file plus an untracked directory/file:
+
+```text
+ D .clew/increments/0001-example.md
+?? .clew/archive/
+```
+
+The benefit: Clew never surprises users or agents by staging unrelated work or changing what is already staged. For review, run `git add -A` before inspecting the staged diff; git then reports the archive move as a rename when similarity is high enough:
+
+```text
+R  .clew/increments/0001-example.md -> .clew/archive/0001-example.md
+```
+
+If the user wants to review without staging, use `git diff --find-renames` / `git diff -M` plus normal `git status` awareness. This keeps Clew's responsibility to project state separate from the operator's responsibility for staging and commits.
 
 ### Commit message convention (recommended, not enforced)
 

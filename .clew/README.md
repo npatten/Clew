@@ -25,3 +25,13 @@ EOF
 ```
 
 Clew writes frontmatter itself; stdin is body content only.
+
+## Reviewing archive moves
+
+`./clew done`, `./clew abandon`, and `./clew reopen` move increment files with normal filesystem renames. Clew does not run `git mv` or mutate the git index.
+
+Before staging, `git status --short` may show a deleted file plus an untracked file or directory. After `git add -A`, git normally reports the move as a rename:
+
+```text
+R  .clew/increments/0001-example.md -> .clew/archive/0001-example.md
+```

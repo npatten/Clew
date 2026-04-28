@@ -60,8 +60,6 @@ pub enum Command {
     },
     /// Open path.md in your editor
     Path,
-    /// Open relay.md in your editor
-    Relay,
     /// Check for drift and dangling references
     Lint,
     /// Atomically renumber an increment ID

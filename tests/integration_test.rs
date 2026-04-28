@@ -41,8 +41,8 @@ fn new_help_documents_arguments_and_flags() {
 // `clew init`
 // ---------------------------------------------------------------------------
 
-const INIT_CREATED_STDERR: &str = "created: .clew\ncreated: .clew/increments\ncreated: .clew/archive\ncreated: .clew/path.md\ncreated: .clew/relay.md\ncreated: .clew/README.md\n";
-const INIT_EXISTS_STDERR: &str = "exists: .clew\nexists: .clew/increments\nexists: .clew/archive\nexists: .clew/path.md\nexists: .clew/relay.md\nexists: .clew/README.md\n";
+const INIT_CREATED_STDERR: &str = "created: .clew\ncreated: .clew/increments\ncreated: .clew/archive\ncreated: .clew/path.md\ncreated: .clew/README.md\n";
+const INIT_EXISTS_STDERR: &str = "exists: .clew\nexists: .clew/increments\nexists: .clew/archive\nexists: .clew/path.md\nexists: .clew/README.md\n";
 
 #[test]
 fn init_creates_expected_layout() {
@@ -64,16 +64,10 @@ fn init_creates_expected_layout() {
         .assert(predicates::path::is_dir());
     temp.child(".clew/path.md")
         .assert(predicates::path::is_file());
-    temp.child(".clew/relay.md")
-        .assert(predicates::path::is_file());
     temp.child(".clew/README.md")
         .assert(predicates::path::is_file());
     assert_eq!(
         std::fs::read_to_string(temp.path().join(".clew/path.md")).unwrap(),
-        ""
-    );
-    assert_eq!(
-        std::fs::read_to_string(temp.path().join(".clew/relay.md")).unwrap(),
         ""
     );
 }
@@ -89,9 +83,6 @@ fn init_rerun_reports_existing_and_does_not_overwrite() {
         .success();
     temp.child(".clew/path.md")
         .write_str("keep path\n")
-        .unwrap();
-    temp.child(".clew/relay.md")
-        .write_str("keep relay\n")
         .unwrap();
     temp.child(".clew/README.md")
         .write_str("keep readme\n")
@@ -109,10 +100,6 @@ fn init_rerun_reports_existing_and_does_not_overwrite() {
     assert_eq!(
         std::fs::read_to_string(temp.path().join(".clew/path.md")).unwrap(),
         "keep path\n"
-    );
-    assert_eq!(
-        std::fs::read_to_string(temp.path().join(".clew/relay.md")).unwrap(),
-        "keep relay\n"
     );
     assert_eq!(
         std::fs::read_to_string(temp.path().join(".clew/README.md")).unwrap(),
@@ -141,7 +128,7 @@ fn init_repairs_partial_state_without_touching_existing_files() {
         .assert()
         .success()
         .stdout("")
-        .stderr("exists: .clew\nexists: .clew/increments\ncreated: .clew/archive\nexists: .clew/path.md\nexists: .clew/relay.md\nexists: .clew/README.md\n");
+        .stderr("exists: .clew\nexists: .clew/increments\ncreated: .clew/archive\nexists: .clew/path.md\nexists: .clew/README.md\n");
 
     temp.child(".clew/archive")
         .assert(predicates::path::is_dir());

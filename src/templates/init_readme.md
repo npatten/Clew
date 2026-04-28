@@ -1,6 +1,6 @@
 # Clew — Project State
 
-This directory holds Clew project state (increments, archive, path, relay).
+This directory holds Clew project state (increments, archive, path).
 
 ## Creating increments
 

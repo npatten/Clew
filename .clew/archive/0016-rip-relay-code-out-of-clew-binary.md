@@ -1,8 +1,8 @@
 ---
 id: 16
-status: backlog
+status: done
 created_at: 2026-04-28T04:28:47Z
-updated_at: 2026-04-28T04:28:47Z
+updated_at: 2026-04-28T05:00:03Z
 ---
 ## Goal
 
@@ -23,13 +23,13 @@ Remove the residual relay-related code/scaffolding now that the relay concept ha
 
 ## Tasks
 
-- [ ] Remove the `Relay` variant from `src/cli.rs`.
-- [ ] Remove the `.clew/relay.md` entry from `InitSpec` in `src/storage/fs.rs`.
-- [ ] Update `src/templates/init_readme.md` to drop the relay reference (already done in `.clew/README.md` — mirror the change in the template).
-- [ ] Update integration tests to reflect the new init output (no `relay.md` line in stderr, no relay file body assertions).
-- [ ] Regenerate the affected `insta` snapshot for the README template.
-- [ ] `git rm .clew/relay.md` so this repo stops carrying it.
-- [ ] Run the full quality gate (`cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`).
+- [x] Remove the `Relay` variant from `src/cli.rs`.
+- [x] Remove the `.clew/relay.md` entry from `InitSpec` in `src/storage/fs.rs`.
+- [x] Update `src/templates/init_readme.md` to drop the relay reference (already done in `.clew/README.md` — mirror the change in the template).
+- [x] Update integration tests to reflect the new init output (no `relay.md` line in stderr, no relay file body assertions).
+- [x] Regenerate the affected `insta` snapshot for the README template.
+- [x] `git rm .clew/relay.md` so this repo stops carrying it.
+- [x] Run the full quality gate (`cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`).
 
 ## Note on #0015
 

@@ -34,7 +34,6 @@ pub fn init(root: &Path) -> Result<InitReport, ClewError> {
         InitSpec::Dir(".clew/increments"),
         InitSpec::Dir(".clew/archive"),
         InitSpec::File(".clew/path.md", ""),
-        InitSpec::File(".clew/relay.md", ""),
         InitSpec::File(
             ".clew/README.md",
             include_str!("../templates/init_readme.md"),

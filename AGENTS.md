@@ -48,58 +48,65 @@ You are the principal engineer — guide the process, use sub-agents in parallel
   - `Co-Authored-By: Claude <noreply@anthropic.com>`
   - `Co-Authored-By: Codex <noreply@openai.com>`
 
-### Quality gates
+### Clew workflow
 
-Run at every milestone (finishing a logical chunk, before commit, before claiming success):
+#### Core rules
+
+- Always invoke Clew as `./clew` from the repo root.
+- Documented loop commands: `init`, `new`, `start`, `done`, `show`, `list`. Other commands may be wired and visible in `./clew --help`, but are not part of the stable MVP loop yet.
+- Prefer Clew's documented no-flag workflow; the core loop is mostly positional.
+- Do not guess flags. Use the no-flag form unless `./clew <cmd> --help` documents a flag needed for the task.
+- Use `./clew list` as the canonical view of project work. Prefer it over inspecting `.clew/increments/` or `.clew/archive/` directly.
+- Let `clew new` allocate IDs. Do not pre-compute the next ID from list output.
+
+#### Starting work
+
+- If the user has not provided an increment ID, ask before proceeding.
+- Run `./clew show <id>` which returns the full increment text; review carefully, ask questions, suggest improvements.
+- Run `./clew start <id>` before beginning implementation.
+
+#### Creating work
+
+Prefer creating increments with the body supplied on stdin:
 
 ```bash
-cargo fmt --check
-cargo clippy --all-targets -- -D warnings
-cargo test
+./clew new "Title here" <<'EOF'
+## Goal
+...
+EOF
 ```
 
-- All three green before commit or reporting success — tests passing alone isn't enough.
+- Keep titles under 7 words.
+- Use direct markdown edits for backlog sharpening and simple metadata changes when clearer than adding CLI ceremony.
+- If material work emerges without an associated increment, pause and propose creating one before continuing.
+
+#### Closing an increment
+
+1. Finish the implementation.
+2. Sanity check docs (especially `clew-spec.md`) and make any required updates.
+3. Run the full quality gate:
+
+   ```bash
+   cargo fmt --check
+   cargo clippy --all-targets -- -D warnings
+   cargo test
+   ```
+
 - Failures are stop-the-line. Fix the root cause; no `#[allow(...)]`, `--no-verify`, or reformat-then-ignore without explicit user approval.
 - Re-run after every fix until all three pass in a single sweep.
 - If `cargo` is unavailable, say so explicitly rather than silently skipping.
 
-### Clew workflow
+4. Ask the user for approval.
 
-- Always invoke Clew as `./clew` from the repo root. _(The wrapper rebuilds then runs the debug binary.)_
-- Documented loop commands: `init`, `new`, `start`, `done`, `show`, `list`. Other commands may be wired and visible in `./clew --help`, but are not part of the stable documented loop yet.
-- **Starting work:** 
-  - (assuming user provided increment ID to work on, if not -> ask)
-  - `./clew show <id>` will return the full increment text; review, ask questions, suggest improvements.
-  - `./clew start <id>` updates increment status to in progress
-- **`./clew list` is the canonical "what's in the project" view** — prefer it over `ls .clew/`. Increments live in `.clew/increments/`, archived ones in `.clew/archive/`; `list` reads both.
-- **Check `./clew <cmd> --help` before guessing flags.** Pattern-matching from other CLIs misfires (e.g., `clew new` takes a positional title, not `--title`).
-- **Let `clew new` allocate the ID.** Don't pre-compute the next ID from `list` output — `clew new` returns the assigned ID on stdout.
-- **Creating an increment with content:** pipe the body via stdin/heredoc rather than `clew new` + edit:
-  ```bash
-  ./clew new "Title here" <<'EOF'
-  ## Goal
-  ...
-  EOF
-  ```
-- Aim to keep titles under 7 words
-- Use direct markdown edits for backlog sharpening and simple metadata changes (status flips, tag tweaks) when that is clearer than adding CLI ceremony. For *creating* an increment with prose body, prefer `clew new` + stdin.
-- Try to track all work — if we start going down a path of material work without an associated increment, pause and propose creating a new increment in clew first.
-  
-**Milestone / Increment close protocol:**
+Only after user approval:
 
-1. Finish work for the increment.
-2. Run the full quality gate.
-3. Sanity check if any docs need to be updated (`clew-spec.md` or clew increments)
-4. Ask for user approval:
-**Only after user approval:**
-5. Mark the increment done with `./clew done <id>`
-6. Commit work + any doc updates + updated clew files
-7. Confirm `git status --short` is as expected before reporting success.
+5. Mark the increment done with `./clew done <id>`.
+6. Commit code, docs, and updated Clew files.
+7. Run `git status --short` and confirm the workspace is clean or only contains expected unrelated changes.
 
-Do not claim a milestone is complete unless quality gate passes and state of clew work items are updated.
+Do not claim an increment is complete unless the quality gate passed and Clew work items are updated.
 
-
-### Plan  discipline
+### Plan discipline
 
 `clew-spec.md` is the load-bearing living spec. It carries a `## Revisions` log and a `last_major_update` frontmatter field for human reviewers picking it up async.
 
@@ -107,5 +114,3 @@ Do not claim a milestone is complete unless quality gate passes and state of cle
 - **Skip both for typo fixes, wording polish, formatting tweaks** — the threshold is "would a returning reviewer want to know this changed?"
 - **Revisions entries describe the _why_, not the diff.** "Collapsed status set; dropped `blocked` as a status" — not "edited section 4."
 - **Keep ~5 entries.** Prune the oldest when adding new ones; git history is the long memory.
-
-

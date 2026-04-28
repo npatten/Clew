@@ -8,18 +8,18 @@ last_major_update: 2026-04-28
 
 ## Revisions
 
+- 2026-04-28 — `clew list` default includes the active working set (`backlog`, `todo`, `in_progress`); `-a`/`--all` adds archived terminal work for history scans.
 - 2026-04-28 — `clew new` accepts non-TTY stdin as increment body so agents can create titled, fully-described backlog items in one shell call.
 - 2026-04-27 — relay's "Next action" → "Next milestone": handoffs should point at the next product chunk, not process mechanics (review, gate, commit).
 - 2026-04-27 — relay-writing discipline moved out of this plan into `AGENTS.md`; plan retains only the relay's format/shape.
 - 2026-04-27 — direct frontmatter edit is first-class; `clew promote` deferred (pure-metadata transitions have no side effects to manage). Self-loop tolerance added for `done`/`abandon`/`reopen` so hand-edit-then-CLI flows complete cleanly.
-- 2026-04-27 — pruned scaffolding details now living in code/git (Stack table, Project layout, Frontmatter struct shape, Scaffolding milestone). Module organization convention moved to `AGENTS.md`. Plan keeps only behavioral specs that shape future work. Marked Epics / parent increments as WIP (found a bunch more design to do there, notes in [[notes-on-epics]]). Bunch of additional tweaking and cleanup.
 
 _Older entries pruned; use `git log hammock-thinking/crew-plan.md` for full history._
 
 ## Open questions
 
 - Full CLI surface: flags, output formats — refine as commands are implemented.
-  - list design has some open questions. Default return (just in progress?) available filter flags?
+  - list design still has open questions around output shape and additional filters.
 - Epics / nesting increments. `[[backlinks?]]` formatting? see: [[notes-on-epics]]
 - Agent's expected workflow loop, codified into `.clew/README.md`.
 - The `.clew/README.md` template content — including the "copy this into your AGENTS.md" harness-integration section. Stub for scaffolding; iterate post-MVP.
@@ -405,10 +405,9 @@ A typical Agent session:
 - `clew init` — scaffold `.clew/` in the current directory: creates `increments/`, `archive/`, empty `path.md`, `relay.md`, and a templated `README.md`. Also creates `#0000-bootstrap-clew` as a real setup task (instructs the user to copy the harness-integration section from `.clew/README.md` into their `AGENTS.md` / `CLAUDE.md`, then run `clew done 0000`). The bootstrap takes `#0000` so the user's first real increment is `#0001`.
 - `clew new "<title>"` — creates in `backlog` (or `todo` with `--ready`). Optional `--parent <id>` flag to link to a parent increment. If stdin is non-TTY, reads it verbatim as the increment body; stdin is body-only, and leading frontmatter delimiters are rejected.
 - `clew show <id>` — accepts numeric ID or slug. Default output: raw markdown (frontmatter + body) to stdout. In an interactive TTY, opens the file in the configured editor instead. `--json` optional for structured output.
-- `clew list [--tag X] [--status Y] [-a] [--all]` — filtered listing.
-  - **Default:** `todo + in_progress` (in-flight work).
-  - `-a` — also include `backlog` (ls-style "show the hidden ones too").
-  - `--all` — also include archived (`done` / `abandoned`).
+- `clew list [--tag X] [--status Y] [-a|--all]` — filtered listing.
+  - **Default:** `backlog + todo + in_progress` (non-archived, non-terminal working set).
+  - `-a` / `--all` — include all statuses, including archived `done` / `abandoned` increments.
   - `--status X` — explicit single-status filter, overrides defaults.
 - `clew promote <id>` — _deferred._ Direct frontmatter edit (`status: backlog` → `status: todo`) suffices; the transition has no side effects. Revisit if MVP self-hosting reveals friction.
 - `clew start <id>` — → in_progress.

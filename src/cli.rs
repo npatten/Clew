@@ -36,7 +36,7 @@ pub enum Command {
         tag: Option<String>,
         #[arg(long)]
         status: Option<String>,
-        #[arg(long)]
+        #[arg(short = 'a', long)]
         all: bool,
     },
     /// Promote an increment from backlog to todo

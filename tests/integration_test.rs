@@ -746,6 +746,34 @@ fn list_all_includes_archived_and_terminal_statuses() {
 }
 
 #[test]
+fn list_short_all_matches_long_all() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-active.md",
+        &fixture_with(1, "active", "todo", None),
+    );
+    write_increment(
+        &temp,
+        "archive",
+        "0002-shipped.md",
+        &fixture_with(2, "shipped", "done", None),
+    );
+
+    let expected = "0001 todo active\n0002 done shipped\n";
+    for flag in ["-a", "--all"] {
+        Command::cargo_bin("clew")
+            .unwrap()
+            .current_dir(temp.path())
+            .args(["list", flag])
+            .assert()
+            .success()
+            .stdout(expected);
+    }
+}
+
+#[test]
 fn list_filters_by_status() {
     let temp = empty_project();
     write_increment(

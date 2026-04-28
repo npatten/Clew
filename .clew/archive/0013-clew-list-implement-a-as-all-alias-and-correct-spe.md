@@ -1,8 +1,8 @@
 ---
 id: 13
-status: backlog
+status: done
 created_at: 2026-04-28T03:50:14Z
-updated_at: 2026-04-28T03:50:14Z
+updated_at: 2026-04-28T04:21:14Z
 ---
 ## Goal
 
@@ -24,6 +24,6 @@ Implement `-a` as an alias for `--all` on `clew list`. Also correct `crew-plan.m
 
 ## Tasks
 
-- [ ] Implement `-a` as alias for `--all` in the list subcommand
-- [ ] Update `crew-plan.md` CLI sketch to reflect: default includes backlog; `-a`/`--all` adds archived
-- [ ] Integration test: `-a` and `--all` produce same output and include archived items
+- [x] Implement `-a` as alias for `--all` in the list subcommand
+- [x] Update `crew-plan.md` CLI sketch to reflect: default includes backlog; `-a`/`--all` adds archived
+- [x] Integration test: `-a` and `--all` produce same output and include archived items

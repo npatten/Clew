@@ -65,14 +65,20 @@ cargo test
 
 ### Clew workflow
 
-- Always invoke Clew as `./clew` from the repo root. The wrapper rebuilds then runs the debug binary. 
+- Always invoke Clew as `./clew` from the repo root. _(The wrapper rebuilds then runs the debug binary.)_
 - Documented loop commands: `init`, `new`, `start`, `done`, `show`, `list`. Other commands may be wired and visible in `./clew --help`, but are not part of the stable documented loop yet.
-- Session start:
-  1. Read `.clew/relay.md` for handoff context.
-  2. If the user points at an increment, run `./clew show <id-or-slug>`.
-  3. If no increment is specified, run `./clew list` and ask what to pick up.
-- Use direct markdown edits for backlog sharpening and simple metadata changes when that is clearer than adding CLI ceremony.
-- try to track all work, if we start going down a path of material work without an associated increment, pause and propose creating a new increment in clew first.
+- **`./clew list` is the canonical "what's in the project" view** — prefer it over `ls .clew/`. Increments live in `.clew/increments/`, archived ones in `.clew/archive/`; `list` reads both.
+- **Check `./clew <cmd> --help` before guessing flags.** Pattern-matching from other CLIs misfires (e.g., `clew new` takes a positional title, not `--title`).
+- **Let `clew new` allocate the ID.** Don't pre-compute the next ID from `list` output — `clew new` returns the assigned ID on stdout.
+- **Creating an increment with content:** pipe the body via stdin/heredoc rather than `clew new` + edit:
+  ```bash
+  ./clew new "Title here" <<'EOF'
+  ## Goal
+  ...
+  EOF
+  ```
+- Use direct markdown edits for backlog sharpening and simple metadata changes (status flips, tag tweaks) when that is clearer than adding CLI ceremony. For *creating* an increment with prose body, prefer `clew new` + stdin.
+- Try to track all work — if we start going down a path of material work without an associated increment, pause and propose creating a new increment in clew first.
 
 ### Plan & Relay discipline
 

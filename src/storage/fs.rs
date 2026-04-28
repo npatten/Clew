@@ -1,10 +1,106 @@
 use crate::core::frontmatter::{self, ParsedFile};
 use crate::error::ClewError;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 const CLEW_DIR: &str = ".clew";
 const INCREMENTS_SUBDIR: &str = "increments";
 const ARCHIVE_SUBDIR: &str = "archive";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InitAction {
+    Created,
+    Exists,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InitItem {
+    pub path: &'static str,
+    pub action: InitAction,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InitReport {
+    pub items: Vec<InitItem>,
+}
+
+/// Scaffold `.clew/` in `root`, creating only missing dirs/files.
+///
+/// Existing paths are never overwritten. The returned report preserves a stable
+/// order so the command layer can emit predictable status lines.
+pub fn init(root: &Path) -> Result<InitReport, ClewError> {
+    let specs = [
+        InitSpec::Dir(".clew"),
+        InitSpec::Dir(".clew/increments"),
+        InitSpec::Dir(".clew/archive"),
+        InitSpec::File(".clew/path.md", ""),
+        InitSpec::File(".clew/relay.md", ""),
+        InitSpec::File(
+            ".clew/README.md",
+            include_str!("../templates/init_readme.md"),
+        ),
+    ];
+
+    let mut items = Vec::with_capacity(specs.len());
+    for spec in specs {
+        let relative = spec.path();
+        let path = root.join(relative);
+        let action = match spec {
+            InitSpec::Dir(_) => create_dir_if_missing(&path)?,
+            InitSpec::File(_, contents) => create_file_if_missing(&path, contents)?,
+        };
+        items.push(InitItem {
+            path: relative,
+            action,
+        });
+    }
+
+    Ok(InitReport { items })
+}
+
+fn create_dir_if_missing(path: &Path) -> Result<InitAction, ClewError> {
+    if path.exists() {
+        return Ok(InitAction::Exists);
+    }
+    std::fs::create_dir_all(path).map_err(ClewError::Io)?;
+    Ok(InitAction::Created)
+}
+
+fn create_file_if_missing(path: &Path, contents: &str) -> Result<InitAction, ClewError> {
+    if path.exists() {
+        return Ok(InitAction::Exists);
+    }
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(ClewError::Io)?;
+    }
+    let mut file = match std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+    {
+        Ok(file) => file,
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+            return Ok(InitAction::Exists);
+        }
+        Err(e) => return Err(ClewError::Io(e)),
+    };
+    file.write_all(contents.as_bytes()).map_err(ClewError::Io)?;
+    Ok(InitAction::Created)
+}
+
+#[derive(Debug, Clone, Copy)]
+enum InitSpec {
+    Dir(&'static str),
+    File(&'static str, &'static str),
+}
+
+impl InitSpec {
+    fn path(self) -> &'static str {
+        match self {
+            InitSpec::Dir(path) | InitSpec::File(path, _) => path,
+        }
+    }
+}
 
 /// Returns true if `path` lives under the archive subdir.
 pub fn is_archived(path: &Path) -> bool {

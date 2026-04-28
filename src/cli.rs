@@ -72,6 +72,7 @@ impl Cli {
                 eprintln!("Run `clew --help` for usage.");
                 Ok(())
             }
+            Some(Command::Init) => crate::commands::init::run(),
             Some(Command::New {
                 title,
                 ready,

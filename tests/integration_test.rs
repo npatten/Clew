@@ -12,6 +12,134 @@ fn version_flag_returns_version_string() {
         .stdout(contains(env!("CARGO_PKG_VERSION")));
 }
 
+// ---------------------------------------------------------------------------
+// `clew init`
+// ---------------------------------------------------------------------------
+
+const INIT_CREATED_STDERR: &str = "created: .clew\ncreated: .clew/increments\ncreated: .clew/archive\ncreated: .clew/path.md\ncreated: .clew/relay.md\ncreated: .clew/README.md\n";
+const INIT_EXISTS_STDERR: &str = "exists: .clew\nexists: .clew/increments\nexists: .clew/archive\nexists: .clew/path.md\nexists: .clew/relay.md\nexists: .clew/README.md\n";
+
+#[test]
+fn init_creates_expected_layout() {
+    let temp = assert_fs::TempDir::new().unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("init")
+        .assert()
+        .success()
+        .stdout("")
+        .stderr(INIT_CREATED_STDERR);
+
+    temp.child(".clew").assert(predicates::path::is_dir());
+    temp.child(".clew/increments")
+        .assert(predicates::path::is_dir());
+    temp.child(".clew/archive")
+        .assert(predicates::path::is_dir());
+    temp.child(".clew/path.md")
+        .assert(predicates::path::is_file());
+    temp.child(".clew/relay.md")
+        .assert(predicates::path::is_file());
+    temp.child(".clew/README.md")
+        .assert(predicates::path::is_file());
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join(".clew/path.md")).unwrap(),
+        ""
+    );
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join(".clew/relay.md")).unwrap(),
+        ""
+    );
+}
+
+#[test]
+fn init_rerun_reports_existing_and_does_not_overwrite() {
+    let temp = assert_fs::TempDir::new().unwrap();
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("init")
+        .assert()
+        .success();
+    temp.child(".clew/path.md")
+        .write_str("keep path\n")
+        .unwrap();
+    temp.child(".clew/relay.md")
+        .write_str("keep relay\n")
+        .unwrap();
+    temp.child(".clew/README.md")
+        .write_str("keep readme\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("init")
+        .assert()
+        .success()
+        .stdout("")
+        .stderr(INIT_EXISTS_STDERR);
+
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join(".clew/path.md")).unwrap(),
+        "keep path\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join(".clew/relay.md")).unwrap(),
+        "keep relay\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join(".clew/README.md")).unwrap(),
+        "keep readme\n"
+    );
+}
+
+#[test]
+fn init_repairs_partial_state_without_touching_existing_files() {
+    let temp = assert_fs::TempDir::new().unwrap();
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("init")
+        .assert()
+        .success();
+    std::fs::remove_dir_all(temp.path().join(".clew/archive")).unwrap();
+    temp.child(".clew/path.md")
+        .write_str("keep path\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("init")
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("exists: .clew\nexists: .clew/increments\ncreated: .clew/archive\nexists: .clew/path.md\nexists: .clew/relay.md\nexists: .clew/README.md\n");
+
+    temp.child(".clew/archive")
+        .assert(predicates::path::is_dir());
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join(".clew/path.md")).unwrap(),
+        "keep path\n"
+    );
+}
+
+#[test]
+fn init_readme_matches_snapshot() {
+    let temp = assert_fs::TempDir::new().unwrap();
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("init")
+        .assert()
+        .success();
+
+    let readme = std::fs::read_to_string(temp.path().join(".clew/README.md")).unwrap();
+    insta::assert_snapshot!(readme);
+}
+
 const FIXTURE: &str = "---\nid: 42\nstatus: in_progress\ncreated_at: 2026-04-20T10:00:00Z\nupdated_at: 2026-04-25T14:30:00Z\n---\n\n# Add OAuth routes\n\n- [x] Scaffold handlers\n- [ ] Write tests\n";
 
 fn make_project() -> assert_fs::TempDir {

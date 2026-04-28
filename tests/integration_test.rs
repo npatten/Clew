@@ -12,6 +12,31 @@ fn version_flag_returns_version_string() {
         .stdout(contains(env!("CARGO_PKG_VERSION")));
 }
 
+#[test]
+fn top_level_help_lists_new_command_with_usage() {
+    let mut cmd = Command::cargo_bin("clew").unwrap();
+    cmd.arg("--help")
+        .assert()
+        .success()
+        .stdout(contains("Usage: clew [COMMAND]"))
+        .stdout(contains("new       Create a new increment"));
+}
+
+#[test]
+fn new_help_documents_arguments_and_flags() {
+    let mut cmd = Command::cargo_bin("clew").unwrap();
+    cmd.args(["new", "--help"])
+        .assert()
+        .success()
+        .stdout(contains("Usage: clew new [OPTIONS] <TITLE>"))
+        .stdout(contains("<TITLE>"))
+        .stdout(contains("Increment title"))
+        .stdout(contains("--ready"))
+        .stdout(contains("Create the increment as todo instead of backlog"))
+        .stdout(contains("--parent <PARENT>"))
+        .stdout(contains("Parent increment ID"));
+}
+
 // ---------------------------------------------------------------------------
 // `clew init`
 // ---------------------------------------------------------------------------

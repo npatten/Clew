@@ -18,9 +18,12 @@ pub enum Command {
     Init,
     /// Create a new increment
     New {
+        /// Increment title
         title: String,
+        /// Create the increment as todo instead of backlog
         #[arg(long)]
         ready: bool,
+        /// Parent increment ID
         #[arg(long)]
         parent: Option<u32>,
     },

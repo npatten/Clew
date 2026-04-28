@@ -1,44 +1,42 @@
 ---
-topic: Clew CLI — M2 dogfood cutover ready for review
-updated_at: 2026-04-28T00:46:10Z
+topic: Clew CLI — #0001 help cleanup ready for review
+updated_at: 2026-04-28T01:24:37Z
 ---
 
-# Relay: M2 dogfood cutover ready for review
+# Relay: #0001 help cleanup ready for review
 
 ## Status
 
-M2 dogfood cutover is complete in the working tree, pending user review/approval before commit.
+Increment #0001 is complete in the working tree, pending user review/approval before commit.
 
-Cutover changes:
+Changes made:
 
-- Added executable `./clew` wrapper; project workflow should use this instead of `cargo run` or `target/debug/clew`.
-- Ran `./clew init` in this repo, preserving ignored `.clew/.obsidian/*` state.
-- Moved root `relay.md` to `.clew/relay.md`.
-- Migrated root `backlog.md` into real Clew increments:
-  - `#0001` backlog — `clew new` missing from help.
-  - `#0002` backlog — `path.md` in-progress section.
-  - `#0003` backlog — `clew promote` command.
-  - `#0004` abandoned — `clew touch` / `clew lint --fix` reconciler, with rejection reasoning preserved.
-  - `#0005` backlog — decide/update plan around deferred `#0000-bootstrap-clew` behavior.
-- Removed old root `backlog.md` and one-shot `bigbang-cutover.md`.
-- Updated `AGENTS.md` to point at `.clew/relay.md` and document the self-hosted `./clew` workflow.
+- Started and completed `#0001` via `./clew start 1` / `./clew done 1`; the increment is archived at `.clew/archive/0001-clew-new-missing-from-clew-help.md`.
+- Verified `./clew --help` and `./clew new --help`.
+- Found `new` was listed, but clap usage strings were blank because the `usage` feature was disabled.
+- Enabled clap's `usage` feature in `Cargo.toml`.
+- Added `new` argument/flag help text in `src/cli.rs` for `<TITLE>`, `--ready`, and `--parent`.
+- Added integration tests covering top-level help and `clew new --help` output in `tests/integration_test.rs`.
 
-Verification performed during the cutover:
+Verification:
 
 ```bash
-./clew lint
-./clew list --all
 cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
 ```
 
-`./clew lint` was clean and the full quality gate passed.
+Passed after the final `./clew done 1` archive move.
 
 ## Context worth carrying
 
-- `./clew list` defaults to in-flight work only, so with the current backlog-only state it prints nothing. Use `./clew list --all` to see the migrated backlog until items are promoted to `todo`.
-- The generated `.clew/README.md` is still the M1 stub. Real project conventions remain in `AGENTS.md` and `hammock-thinking/crew-plan.md` for now.
-- The plan still says `clew init` creates `#0000-bootstrap-clew`; implementation does not. That drift is now tracked as `#0005` instead of being resolved in M2.
+- The previous relay still described M2 cutover review, but `git status` showed that only `.clew/relay.md` was modified before starting #0001; the M2 cutover files appear already tracked/clean.
+- Current working tree changes are #0001, this relay update, and newly added backlog items #0006-#0009.
+- Added backlog items:
+  - `#0006` — decide whether archive/reopen moves should use `git mv`.
+  - `#0007` — add stdin/heredoc support for `clew new`.
+  - `#0008` — add distinction for bugs? (currently title-only, needs sharpening later).
+  - `#0009` — add filepath in responses (rough note, needs design).
+- `./clew list --all` now shows `#0001 done`, `#0002/#0003/#0005-#0009 backlog`, and `#0004 abandoned`.
 
-## Next milestone — first self-hosted Clew increment
+## Next milestone
 
-Use `.clew/` as the source of truth. Pick or promote the next increment from the migrated backlog, likely `#0001` if the goal is a small CLI/help cleanup or `#0005` if the goal is to reconcile the plan before more feature work.
+Likely pick the next backlog item from `.clew/`: `#0002` (`path.md` in-progress section) or `#0005` (reconcile plan drift around deferred bootstrap behavior).

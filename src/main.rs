@@ -10,6 +10,7 @@ fn main() -> ExitCode {
                 | clew::ClewError::ClewRootNotFound
                 | clew::ClewError::InvalidTransition { .. }
                 | clew::ClewError::SlugCollision { .. }
+                | clew::ClewError::InvalidStdin
                 | clew::ClewError::InvalidStatusFilter(_)
                 | clew::ClewError::EmptyReason
                 | clew::ClewError::ArchivedIncrement { .. }

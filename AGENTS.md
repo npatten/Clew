@@ -89,7 +89,7 @@ cargo test
 
 1. Finish the chunk / milestone.
 2. Run the full quality gate.
-3. Update `.clew/relay.md` with essential context for next time and the next milestone.
+3. Update `.clew/relay.md` with essential context for next time.
 4. Ask for user approval.
 5. Only after user approval: Commit work + `.clew/relay.md` together
 6. Confirm `git status --short` clean before reporting success.
@@ -100,7 +100,7 @@ Do not claim a milestone is complete unless quality gate passes and `.clew/relay
 
 - Goal: capture what's expensive to re-derive next session.
 - `Next milestone` is the next product milestone/increment of work, not process mechanics like asking for review, running the gate, or committing.
-- If process state matters, capture it under Status or Context worth carrying.
+- Skip any line that will be false once the user approves: "pending review", "awaiting approval", "ready to commit", "quality gate passed". Put those in chat.
 - Capture decisions and gotchas the next agent would otherwise lose time on.
 - Prefer exact paths, command names, and commit hashes already at hand.
 - Don't restate what's in crew-plan.md; reference where valuable.

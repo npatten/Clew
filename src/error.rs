@@ -19,6 +19,9 @@ pub enum ClewError {
     #[error("frontmatter parse error: {0}")]
     Frontmatter(String),
 
+    #[error("stdin appears to contain frontmatter (starts with `---`).\n       `clew new` writes frontmatter itself; pass body content only.")]
+    InvalidStdin,
+
     #[error(
         "invalid --status value: '{0}' (expected: backlog, todo, in_progress, done, abandoned)"
     )]

@@ -299,6 +299,11 @@ fn read_increment(temp: &assert_fs::TempDir, filename: &str) -> String {
     std::fs::read_to_string(temp.path().join(".clew/increments").join(filename)).unwrap()
 }
 
+fn increment_body(contents: &str) -> &str {
+    let close = contents.find("\n---\n").unwrap();
+    &contents[close + "\n---\n".len()..]
+}
+
 #[test]
 fn new_creates_backlog_increment_with_padded_id() {
     let temp = empty_project();
@@ -306,6 +311,7 @@ fn new_creates_backlog_increment_with_padded_id() {
         .unwrap()
         .current_dir(temp.path())
         .args(["new", "Add OAuth"])
+        .write_stdin("")
         .assert()
         .success()
         .stdout("0001\n");
@@ -318,12 +324,158 @@ fn new_creates_backlog_increment_with_padded_id() {
 }
 
 #[test]
+fn new_reads_piped_stdin_body_verbatim() {
+    let temp = empty_project();
+    let stdin = "## Context\nbody line\n";
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "With body"])
+        .write_stdin(stdin)
+        .assert()
+        .success()
+        .stdout("0001\n");
+
+    let contents = read_increment(&temp, "0001-with-body.md");
+    assert_eq!(increment_body(&contents), stdin);
+}
+
+#[test]
+fn new_reads_heredoc_equivalent_stdin_body() {
+    let temp = empty_project();
+    let stdin = "## Context\n\n- [ ] First task\n- [ ] Second task\n";
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "Heredoc body"])
+        .write_stdin(stdin)
+        .assert()
+        .success();
+
+    let contents = read_increment(&temp, "0001-heredoc-body.md");
+    assert_eq!(increment_body(&contents), stdin);
+}
+
+#[test]
+fn new_with_empty_stdin_writes_empty_body() {
+    let temp = empty_project();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "Empty stdin"])
+        .write_stdin("")
+        .assert()
+        .success();
+
+    let contents = read_increment(&temp, "0001-empty-stdin.md");
+    assert_eq!(increment_body(&contents), "");
+}
+
+#[test]
+fn new_preserves_leading_whitespace_in_stdin_body() {
+    let temp = empty_project();
+    let stdin = "  indented first line\n\tTabbed second line\n";
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "Whitespace body"])
+        .write_stdin(stdin)
+        .assert()
+        .success();
+
+    let contents = read_increment(&temp, "0001-whitespace-body.md");
+    assert_eq!(increment_body(&contents), stdin);
+}
+
+#[test]
+fn new_rejects_stdin_starting_with_lf_frontmatter_delimiter() {
+    let temp = empty_project();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "Bad body"])
+        .write_stdin("---\nid: 1\n---\n")
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains("stdin appears to contain frontmatter"))
+        .stderr(contains("pass body content only"));
+
+    assert!(!temp
+        .path()
+        .join(".clew/increments/0001-bad-body.md")
+        .exists());
+}
+
+#[test]
+fn new_rejects_stdin_starting_with_crlf_frontmatter_delimiter() {
+    let temp = empty_project();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "Bad body"])
+        .write_stdin("---\r\nid: 1\r\n---\r\n")
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains("stdin appears to contain frontmatter"));
+
+    assert!(!temp
+        .path()
+        .join(".clew/increments/0001-bad-body.md")
+        .exists());
+}
+
+#[test]
+fn new_allows_frontmatter_delimiter_later_in_stdin_body() {
+    let temp = empty_project();
+    let stdin = "Intro\n\n---\n\nThematic break is allowed.\n";
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "Allowed delimiter"])
+        .write_stdin(stdin)
+        .assert()
+        .success();
+
+    let contents = read_increment(&temp, "0001-allowed-delimiter.md");
+    assert_eq!(increment_body(&contents), stdin);
+}
+
+#[test]
+fn new_without_stdin_in_test_harness_writes_empty_body() {
+    // assert_cmd does not allocate a TTY, so this covers the common agent/test
+    // harness path where stdin is non-TTY but empty. The interactive TTY path
+    // should be manually verified with `./clew new "Manual empty body"`.
+    let temp = empty_project();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "No redirected stdin"])
+        .write_stdin("")
+        .assert()
+        .success();
+
+    let contents = read_increment(&temp, "0001-no-redirected-stdin.md");
+    assert_eq!(increment_body(&contents), "");
+}
+
+#[test]
 fn new_with_ready_flag_starts_in_todo() {
     let temp = empty_project();
     Command::cargo_bin("clew")
         .unwrap()
         .current_dir(temp.path())
         .args(["new", "Add OAuth", "--ready"])
+        .write_stdin("")
         .assert()
         .success();
 
@@ -339,6 +491,7 @@ fn new_allocates_sequential_ids() {
             .unwrap()
             .current_dir(temp.path())
             .args(["new", title])
+            .write_stdin("")
             .assert()
             .success()
             .stdout(format!("{expected_id}\n"));
@@ -358,6 +511,7 @@ fn new_id_allocation_includes_archive() {
         .unwrap()
         .current_dir(temp.path())
         .args(["new", "Next"])
+        .write_stdin("")
         .assert()
         .success()
         .stdout("0008\n");
@@ -370,6 +524,7 @@ fn new_with_parent_writes_parent_field() {
         .unwrap()
         .current_dir(temp.path())
         .args(["new", "Parent epic"])
+        .write_stdin("")
         .assert()
         .success();
 
@@ -377,6 +532,7 @@ fn new_with_parent_writes_parent_field() {
         .unwrap()
         .current_dir(temp.path())
         .args(["new", "Child increment", "--parent", "1"])
+        .write_stdin("")
         .assert()
         .success();
 
@@ -391,6 +547,7 @@ fn new_with_missing_parent_errors() {
         .unwrap()
         .current_dir(temp.path())
         .args(["new", "Orphan", "--parent", "999"])
+        .write_stdin("")
         .assert()
         .failure()
         .code(1)
@@ -405,6 +562,7 @@ fn new_slug_collision_in_increments_errors() {
         .unwrap()
         .current_dir(temp.path())
         .args(["new", "Add OAuth"])
+        .write_stdin("")
         .assert()
         .success();
 
@@ -412,6 +570,7 @@ fn new_slug_collision_in_increments_errors() {
         .unwrap()
         .current_dir(temp.path())
         .args(["new", "Add OAuth"])
+        .write_stdin("")
         .assert()
         .failure()
         .code(1)
@@ -434,6 +593,7 @@ fn new_slug_collision_against_archive_errors() {
         .unwrap()
         .current_dir(temp.path())
         .args(["new", "Add OAuth"])
+        .write_stdin("")
         .assert()
         .failure()
         .code(1)
@@ -450,6 +610,7 @@ fn new_walks_up_to_find_clew_root() {
         .unwrap()
         .current_dir(nested.path())
         .args(["new", "From subdir"])
+        .write_stdin("")
         .assert()
         .success()
         .stdout("0001\n");
@@ -467,6 +628,7 @@ fn new_outside_clew_project_errors() {
         .unwrap()
         .current_dir(temp.path())
         .args(["new", "Anything"])
+        .write_stdin("")
         .assert()
         .failure()
         .code(1)
@@ -962,6 +1124,7 @@ fn new_output_is_pipeable_to_show() {
         .unwrap()
         .current_dir(temp.path())
         .args(["new", "Pipeable"])
+        .write_stdin("")
         .assert()
         .success();
 

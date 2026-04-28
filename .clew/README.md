@@ -2,4 +2,26 @@
 
 This directory holds Clew project state (increments, archive, path, relay).
 
-> **TODO:** Real conventions and a "copy this into your AGENTS.md" section will be filled in once `clew init` is implemented for real.
+## Creating increments
+
+Create an empty backlog item:
+
+```bash
+./clew new "Add OAuth routes"
+```
+
+Create an increment with a Markdown body by passing non-TTY stdin:
+
+```bash
+./clew new "Add OAuth routes" <<'EOF'
+## Context
+
+Why this increment matters.
+
+## Tasks
+
+- [ ] First task
+EOF
+```
+
+Clew writes frontmatter itself; stdin is body content only.

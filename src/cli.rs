@@ -16,7 +16,7 @@ pub struct Cli {
 pub enum Command {
     /// Initialize .clew/ in the current directory
     Init,
-    /// Create a new increment
+    /// Create a new increment; reads body content from non-TTY stdin
     New {
         /// Increment title
         title: String,

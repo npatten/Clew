@@ -1,8 +1,8 @@
 ---
 id: 7
-status: backlog
+status: done
 created_at: 2026-04-28T02:17:10Z
-updated_at: 2026-04-28T02:17:10Z
+updated_at: 2026-04-28T02:51:39Z
 ---
 
 # Add stdin/heredoc support for `clew new`
@@ -69,22 +69,22 @@ Not adding `--body` in this increment, but reserve the design: if both stdin (no
 
 ## Tasks
 
-- [ ] Add stdin read to [src/commands/new.rs](src/commands/new.rs): detect non-TTY via `std::io::IsTerminal`, read verbatim with `read_to_string`.
-- [ ] Plumb the body string through `ParsedFile.body` instead of `String::new()`.
-- [ ] Add the `---\n` / `---\r\n` leading-prefix guardrail with a clear error message.
-- [ ] Add the new typed `ClewError` variant for invalid stdin payload; map to exit code 1.
-- [ ] Verify `frontmatter::serialize` handles a non-empty body with trailing newline cleanly (no doubled newlines). Fix the serializer if it doesn't.
-- [ ] Update the `clew new` `--help` text (clap doc comment) to mention stdin body.
-- [ ] Integration test: piped stdin body preserved exactly, including trailing newline.
-- [ ] Integration test: heredoc-equivalent stdin (via `assert_cmd`'s `.write_stdin(...)`) round-trips correctly.
-- [ ] Integration test: empty stdin (`< /dev/null` shape) produces empty body — agent harness path.
-- [ ] Integration test: leading whitespace in body preserved.
-- [ ] Integration test: stdin starting with `---\n` returns a user error (exit 1) with the guardrail message.
-- [ ] Integration test: stdin starting with `---\r\n` rejected the same way.
-- [ ] Integration test: `---` appearing later in the body is allowed and preserved.
-- [ ] Integration test: no-redirect interactive case still writes empty body — unchanged behavior. Skip with a comment if `assert_cmd` cannot simulate a TTY; document the manual-test alternative.
-- [ ] Update `.clew/README.md` template (and any user-facing help) to document the heredoc form.
-- [ ] Update [hammock-thinking/crew-plan.md](hammock-thinking/crew-plan.md) CLI sketch entry for `clew new` to mention stdin body.
+- [x] Add stdin read to [src/commands/new.rs](src/commands/new.rs): detect non-TTY via `std::io::IsTerminal`, read verbatim with `read_to_string`.
+- [x] Plumb the body string through `ParsedFile.body` instead of `String::new()`.
+- [x] Add the `---\n` / `---\r\n` leading-prefix guardrail with a clear error message.
+- [x] Add the new typed `ClewError` variant for invalid stdin payload; map to exit code 1.
+- [x] Verify `frontmatter::serialize` handles a non-empty body with trailing newline cleanly (no doubled newlines). Fix the serializer if it doesn't.
+- [x] Update the `clew new` `--help` text (clap doc comment) to mention stdin body.
+- [x] Integration test: piped stdin body preserved exactly, including trailing newline.
+- [x] Integration test: heredoc-equivalent stdin (via `assert_cmd`'s `.write_stdin(...)`) round-trips correctly.
+- [x] Integration test: empty stdin (`< /dev/null` shape) produces empty body — agent harness path.
+- [x] Integration test: leading whitespace in body preserved.
+- [x] Integration test: stdin starting with `---\n` returns a user error (exit 1) with the guardrail message.
+- [x] Integration test: stdin starting with `---\r\n` rejected the same way.
+- [x] Integration test: `---` appearing later in the body is allowed and preserved.
+- [x] Integration test: no-redirect interactive case still writes empty body — unchanged behavior. Skip with a comment if `assert_cmd` cannot simulate a TTY; document the manual-test alternative.
+- [x] Update `.clew/README.md` template (and any user-facing help) to document the heredoc form.
+- [x] Update [hammock-thinking/crew-plan.md](hammock-thinking/crew-plan.md) CLI sketch entry for `clew new` to mention stdin body.
 
 ## Open questions
 

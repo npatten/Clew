@@ -5,7 +5,7 @@ use crate::error::ClewError;
 use crate::storage::fs;
 use chrono::{SecondsFormat, Utc};
 use std::collections::BTreeMap;
-use std::io::Write;
+use std::io::{IsTerminal, Write};
 
 pub fn run(title: &str, ready: bool, parent: Option<u32>) -> Result<(), ClewError> {
     let cwd = std::env::current_dir().map_err(ClewError::Io)?;
@@ -35,6 +35,8 @@ pub fn run(title: &str, ready: bool, parent: Option<u32>) -> Result<(), ClewErro
         });
     }
 
+    let body = read_stdin_body()?;
+
     let next_id = entries.iter().map(|e| e.id).max().map_or(1, |m| m + 1);
     // Truncate to whole-second precision to match the frontmatter format
     // contract (RFC 3339 UTC, no subseconds).
@@ -56,10 +58,7 @@ pub fn run(title: &str, ready: bool, parent: Option<u32>) -> Result<(), ClewErro
         extra: BTreeMap::new(),
     };
 
-    let contents = frontmatter::serialize(&ParsedFile {
-        increment,
-        body: String::new(),
-    })?;
+    let contents = frontmatter::serialize(&ParsedFile { increment, body })?;
 
     let filename = format!("{:04}-{}.md", next_id, new_slug);
     fs::write_new_increment(&root, &filename, &contents)?;
@@ -68,4 +67,18 @@ pub fn run(title: &str, ready: bool, parent: Option<u32>) -> Result<(), ClewErro
     let mut handle = stdout.lock();
     writeln!(handle, "{:04}", next_id).map_err(ClewError::Io)?;
     Ok(())
+}
+
+fn read_stdin_body() -> Result<String, ClewError> {
+    let stdin = std::io::stdin();
+    if stdin.is_terminal() {
+        return Ok(String::new());
+    }
+
+    let body = std::io::read_to_string(stdin).map_err(ClewError::Io)?;
+    if body.starts_with("---\n") || body.starts_with("---\r\n") {
+        return Err(ClewError::InvalidStdin);
+    }
+
+    Ok(body)
 }

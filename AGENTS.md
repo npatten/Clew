@@ -14,7 +14,7 @@ In Greek myth, Ariadne gave Theseus the "Clew" (a ball of thread) to navigate th
 ## Resources
 
 - Full project spec: `hammock-thinking/crew-plan.md`
-- Hand off from previous agent session: `relay.md`
+- Hand off from previous agent session: `.clew/relay.md`
 
 ## Software development
 
@@ -42,7 +42,7 @@ You are the principal engineer — guide the process, use sub-agents in parallel
 
 - One feature / increment at a time; logical chunks that make sense together
 - ONLY commit files YOU changed as part of the current increment / chunk
-- Do not prefix commit messages with Clew increment refs until this repo has been bootstrapped with real `.clew/` increments. Use plain messages for now.
+- Prefix commit messages with `[#NNNN]` when the work belongs to a real Clew increment. Use a plain message for repository/process cutovers that are not tied to an increment.
 - Credit your clanker as co-author. Always prefix the co-author line(s) with a `Clankers:` header, e.g.:
   - `Clankers:`
   - `Co-Authored-By: Claude <noreply@anthropic.com>`
@@ -63,6 +63,17 @@ cargo test
 - Re-run after every fix until all three pass in a single sweep.
 - If `cargo` is unavailable, say so explicitly rather than silently skipping.
 
+### Clew workflow
+
+- Always invoke Clew as `./clew` from the repo root. The wrapper rebuilds then runs the debug binary. 
+- Documented loop commands: `init`, `new`, `start`, `done`, `show`, `list`. Other commands may be wired and visible in `./clew --help`, but are not part of the stable documented loop yet.
+- Session start:
+  1. Read `.clew/relay.md` for handoff context.
+  2. If the user points at an increment, run `./clew show <id-or-slug>`.
+  3. If no increment is specified, run `./clew list` and ask what to pick up.
+- Use direct markdown edits for backlog sharpening and simple metadata changes when that is clearer than adding CLI ceremony.
+- try to track all work, if we start going down a path of material work without an associated increment, pause and propose creating a new increment in clew first.
+
 ### Plan & Relay discipline
 
 `crew-plan.md` is the load-bearing living spec. It carries a `## Revisions` log and a `last_major_update` frontmatter field for human reviewers picking it up async.
@@ -72,18 +83,18 @@ cargo test
 - **Revisions entries describe the _why_, not the diff.** "Switched relay to single rolling file (per-increment didn't justify the scale)" — not "edited section 4."
 - **Keep ~5 entries.** Prune the oldest when adding new ones; git history is the long memory.
 
-`relay.md` is the session handoff (format guidance in: `crew-plan.md` → Relay format). Keep it current with every commit.
+`.clew/relay.md` is the session handoff (format guidance in: `crew-plan.md` → Relay format). Keep it current with every commit.
 
 **Milestone close protocol:**
 
 1. Finish the chunk / milestone.
 2. Run the full quality gate.
-3. Update `relay.md` to with essential context for next time and the next milestone.
+3. Update `.clew/relay.md` with essential context for next time and the next milestone.
 4. Ask for user approval.
-5. Only after user approval: Commit work + `relay.md` together
+5. Only after user approval: Commit work + `.clew/relay.md` together
 6. Confirm `git status --short` clean before reporting success.
 
-Do not claim a milestone is complete unless quality gate passes and `relay.md` reflects the latest committed state.
+Do not claim a milestone is complete unless quality gate passes and `.clew/relay.md` reflects the latest committed state.
 
 **Writing the relay:**
 

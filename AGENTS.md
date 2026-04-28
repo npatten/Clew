@@ -14,6 +14,7 @@ In Greek myth, Ariadne gave Theseus the "Clew" (a ball of thread) to navigate th
 ## Resources
 
 - Full project spec: `clew-spec.md`
+- All open work items run: `./clew list`
 
 ## Software development
 
@@ -66,6 +67,10 @@ cargo test
 
 - Always invoke Clew as `./clew` from the repo root. _(The wrapper rebuilds then runs the debug binary.)_
 - Documented loop commands: `init`, `new`, `start`, `done`, `show`, `list`. Other commands may be wired and visible in `./clew --help`, but are not part of the stable documented loop yet.
+- **Starting work:** 
+  - (assuming user provided increment ID to work on, if not -> ask)
+  - `./clew show <id>` will return the full increment text; review, ask questions, suggest improvements.
+  - `./clew start <id>` updates increment status to in progress
 - **`./clew list` is the canonical "what's in the project" view** — prefer it over `ls .clew/`. Increments live in `.clew/increments/`, archived ones in `.clew/archive/`; `list` reads both.
 - **Check `./clew <cmd> --help` before guessing flags.** Pattern-matching from other CLIs misfires (e.g., `clew new` takes a positional title, not `--title`).
 - **Let `clew new` allocate the ID.** Don't pre-compute the next ID from `list` output — `clew new` returns the assigned ID on stdout.

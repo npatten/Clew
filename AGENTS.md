@@ -14,7 +14,6 @@ In Greek myth, Ariadne gave Theseus the "Clew" (a ball of thread) to navigate th
 ## Resources
 
 - Full project spec: `hammock-thinking/crew-plan.md`
-- Hand off from previous agent session: `.clew/relay.md`
 
 ## Software development
 
@@ -77,38 +76,27 @@ cargo test
   ...
   EOF
   ```
+- Aim to keep titles under 7 words
 - Use direct markdown edits for backlog sharpening and simple metadata changes (status flips, tag tweaks) when that is clearer than adding CLI ceremony. For *creating* an increment with prose body, prefer `clew new` + stdin.
 - Try to track all work — if we start going down a path of material work without an associated increment, pause and propose creating a new increment in clew first.
 
-### Plan & Relay discipline
+### Plan  discipline
 
 `crew-plan.md` is the load-bearing living spec. It carries a `## Revisions` log and a `last_major_update` frontmatter field for human reviewers picking it up async.
 
 - **When you make a meaningful design edit to `crew-plan.md`** (a pivot, a new decision, a deferral, a structural change), add one line to `## Revisions` and bump `last_major_update` to today's date.
 - **Skip both for typo fixes, wording polish, formatting tweaks** — the threshold is "would a returning reviewer want to know this changed?"
-- **Revisions entries describe the _why_, not the diff.** "Switched relay to single rolling file (per-increment didn't justify the scale)" — not "edited section 4."
+- **Revisions entries describe the _why_, not the diff.** "Collapsed status set; dropped `blocked` as a status" — not "edited section 4."
 - **Keep ~5 entries.** Prune the oldest when adding new ones; git history is the long memory.
 
-`.clew/relay.md` is the session handoff (format guidance in: `crew-plan.md` → Relay format). Keep it current with every commit.
 
 **Milestone close protocol:**
 
 1. Finish the chunk / milestone.
 2. Run the full quality gate.
-3. Update `.clew/relay.md` with essential context for next time.
+3. Sanity check if any docs need to be updated (`cew-plan.md` or clew increments)
 4. Ask for user approval.
-5. Only after user approval: Commit work + `.clew/relay.md` together
+5. Only after user approval: Commit work + any doc updates + `./clew done <id>` on any completed increments
 6. Confirm `git status --short` clean before reporting success.
 
-Do not claim a milestone is complete unless quality gate passes and `.clew/relay.md` reflects the latest committed state.
-
-**Writing the relay:**
-
-- Goal: capture what's expensive to re-derive next session.
-- `Next milestone` is the next product milestone/increment of work, not process mechanics like asking for review, running the gate, or committing.
-- Skip any line that will be false once the user approves: "pending review", "awaiting approval", "ready to commit", "quality gate passed". Put those in chat.
-- Capture decisions and gotchas the next agent would otherwise lose time on.
-- Prefer exact paths, command names, and commit hashes already at hand.
-- Don't restate what's in crew-plan.md; reference where valuable.
-- Post-commit, drop the play-by-play. Once `[#NNNN]` is committed, the commit + archived increment are the record — don't re-list changes, gate output, or "pending review" status in the relay. Forward-looking context only.
-- Omit empty sections.
+Do not claim a milestone is complete unless quality gate passes and state of clew work items are updated.

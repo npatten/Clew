@@ -8,10 +8,9 @@ last_major_update: 2026-04-28
 
 ## Revisions
 
+- 2026-04-28 — relay (`relay.md` + `clew relay`) pulled out of the design; in practice increments themselves are carrying cross-session context well enough that the rolling relay file added noise without earning its keep. Design parked under #0015 in case we revive it.
 - 2026-04-28 — `clew list` default includes the active working set (`backlog`, `todo`, `in_progress`); `-a`/`--all` adds archived terminal work for history scans.
 - 2026-04-28 — `clew new` accepts non-TTY stdin as increment body so agents can create titled, fully-described backlog items in one shell call.
-- 2026-04-27 — relay's "Next action" → "Next milestone": handoffs should point at the next product chunk, not process mechanics (review, gate, commit).
-- 2026-04-27 — relay-writing discipline moved out of this plan into `AGENTS.md`; plan retains only the relay's format/shape.
 - 2026-04-27 — direct frontmatter edit is first-class; `clew promote` deferred (pure-metadata transitions have no side effects to manage). Self-loop tolerance added for `done`/`abandon`/`reopen` so hand-edit-then-CLI flows complete cleanly.
 
 _Older entries pruned; use `git log hammock-thinking/crew-plan.md` for full history._
@@ -24,7 +23,6 @@ _Older entries pruned; use `git log hammock-thinking/crew-plan.md` for full hist
 - Agent's expected workflow loop, codified into `.clew/README.md`.
 - The `.clew/README.md` template content — including the "copy this into your AGENTS.md" harness-integration section. Stub for scaffolding; iterate post-MVP.
 - Distribution: `cargo install`? curl-to-bash? homebrew? (Default to `cargo install` for v1; revisit later.)
-- exact `relay.md` lifecycle
 
 ## What is Clew
 
@@ -59,7 +57,6 @@ Guiding philosophy: [Simple Made Easy (Hickey)](https://www.youtube.com/watch?v=
 - **Increment** — A standalone unit of work containing zero or more tasks. When completed, the goal is for the codebase to be stable, tested, linted, and safely committable. The unit of work an agent typically completes in a session. _[1 session : 1 Increment] is an encouraged pattern, not a requirement._ An increment may have a parent increment; a parent with multiple children forms an epic (a larger body of work that must ship together).
 - **Path** — The hand-curated priority order across in-flight increments, expressed in `.clew/path.md`. Line order = priority.
 - **Archive** — `.clew/archive/`, the resting place for `done` or `abandoned` increments. Files are moved via `git mv`, preserving history. Reopening moves them back.
-- **Relay** — An ephemeral transition of context between agent sessions. Captures what doesn't live anywhere else (discoveries, next-actions, open questions). Anything essential for an increment belongs in the increment; the relay is strictly for meta-context that doesn't fit neatly there. (in active testing, unclear how it will persist / evolve)
 
 ---
 
@@ -85,7 +82,6 @@ All state lives in plain markdown files with YAML frontmatter. Reasoning:
 │   └── 0007-oauth-overhaul.md      
 ├── archive/
 │   └── 0001-old-work.md             # completed or abandoned increments
-├── relay.md                         # single rolling session-handoff file
 ├── path.md                          # ordered priority list
 └── README.md                        # conventions for humans + agents
 ```
@@ -94,7 +90,6 @@ All state lives in plain markdown files with YAML frontmatter. Reasoning:
 - **Single `increments/` directory** — all items are increments. 
 - WIP: Parent-child relationships are still being designed. An increment with children is semantically an epic (a larger body of work that must ship together), but it's stored and treated like any other increment.
 - **Archive on done** — completed or abandoned increments move to `.clew/archive/`. Keeps working set small; preserves git history via `git mv`. Reopening (`clew reopen`) moves them back.
-- **Single rolling `relay.md`** — one session-handoff file at the top level, overwritten each session. Git provides history. Not archived with increments.
 - **User-level config lives elsewhere.** Editor preferences and other per-user settings live at `~/.config/clew/config.toml` (platform-correct path via the `directories` crate), NOT in `.clew/`. No project level config currently supported.
 
 ### Tasks live inside increments
@@ -330,79 +325,23 @@ A single hand-curated markdown file expressing priority order across all in-flig
 
 ---
 
-## Relay format
+## Session loop
 
-A relay is the artifact created when one agent session ends and another begins. It captures the **ephemeral context** that doesn't live in the increment file, git history, or the codebase: discoveries, next-actions, open questions, drift from plan.
+A typical agent session:
 
-**Boundary with the increment file:** anything essential to resume work — plan, criteria, tasks, file paths the next session must touch — belongs in the increment itself. The relay is strictly for meta-context that doesn't fit neatly there: in-flight discoveries, judgment calls, gotchas that emerged this session. If you're tempted to put plan-shaped content in the relay, push it down into the increment instead. Likewise, anything recoverable from `git log` or the archived increment file does not belong here.
+1. `clew next` → get raw markdown of next priority task.
+2. Work.
+3. If increment complete: `clew done {id}` _(auto-removes from path)._
+4. If priority shifts: edit `path.md` for next session.
+5. Commit; _recommendation is to check in the updated clew files with the completed work._
 
-### Single rolling relay
-
-`.clew/relay.md` — one file at the top level, overwritten each session. Git provides history if needed. **Not archived** with increments — the relay is "current focus" state, not increment-bound.
-
-Rationale: the design assumes 1–2 primary agents at a time, working a single in-progress increment per session. A per-increment relay model solves a problem that doesn't exist at this scale. If concurrent in-flight work ever becomes real, per-increment relays can be added later (small migration, additive change).
-
-### When written
-
-Manually at session end via `clew relay`. The CLI:
-
-1. Opens the existing relay (or a template if none).
-2. Pre-fills with `git log` since the last relay (raw material for "what's done").
-3. Pre-fills task checkbox state for the current focus increment.
-4. Lets the agent fill the rest.
-5. Saves and timestamps.
-
-Manual > auto-generated: the relay's value is in _judgment_ about what's worth carrying forward.
-
-`clew done` does **not** touch `relay.md`. The next session overwrites it naturally. (Auto-clearing or auto-archiving on `done` is purely additive and can be added later if it earns its keep.)
-
-### Format
-
-```markdown
----
-work-completed: [ ] (array of completed increments. default assumption is it will just be one)
-updated_at: 2026-04-26T15:30:00Z
----
-
-# Relay:
-
-## Context worth carrying
-
-- Highest-value section. Things that took time to learn.
-- Discoveries, gotchas, decisions that didn't have a home and their reasoning.
-- Code references with file:line where useful.
-
-## Open questions
-
-- [Human?] Things needing human input.
-- [Decide] Things the next agent should pick a direction on.
-
-## Drift from plan
-
-- New tasks discovered outside the original increment scope.
-- Original tasks revealed as unnecessary.
-```
-
-### Path/relay relationship
-
-- `path.md` is **project-wide priority**: organized backlog of work
-- `relay.md` is **session-handoff context**: context efficient handoff between agent sessions
-
-A typical Agent session:
-
-1. Read `relay.md` → for any critical handoff information
-2. `clew next` → get raw markdown of next priority task
-3. Work
-4. If increment complete: `clew done {id}` _(auto-removes from path)._
-5. If priority shifts: edit `path.md` for next session.
-6. `clew relay` at session end.
-7. commit; _recommendation is to check in the updated clew files with the completed work_
+Cross-session context lives inside the active increment file (decisions, gotchas, discoveries). A separate session-handoff artifact (`relay.md` + `clew relay`) was prototyped and pulled — see #0015 for the parked design if we ever revive it.
 
 ---
 
 ## CLI sketch
 
-- `clew init` — scaffold `.clew/` in the current directory: creates `increments/`, `archive/`, empty `path.md`, `relay.md`, and a templated `README.md`. Also creates `#0000-bootstrap-clew` as a real setup task (instructs the user to copy the harness-integration section from `.clew/README.md` into their `AGENTS.md` / `CLAUDE.md`, then run `clew done 0000`). The bootstrap takes `#0000` so the user's first real increment is `#0001`.
+- `clew init` — scaffold `.clew/` in the current directory: creates `increments/`, `archive/`, empty `path.md`, and a templated `README.md`. Also creates `#0000-bootstrap-clew` as a real setup task (instructs the user to copy the harness-integration section from `.clew/README.md` into their `AGENTS.md` / `CLAUDE.md`, then run `clew done 0000`). The bootstrap takes `#0000` so the user's first real increment is `#0001`.
 - `clew new "<title>"` — creates in `backlog` (or `todo` with `--ready`). Optional `--parent <id>` flag to link to a parent increment. If stdin is non-TTY, reads it verbatim as the increment body; stdin is body-only, and leading frontmatter delimiters are rejected.
 - `clew show <id>` — accepts numeric ID or slug. Default output: raw markdown (frontmatter + body) to stdout. In an interactive TTY, opens the file in the configured editor instead. `--json` optional for structured output.
 - `clew list [--tag X] [--status Y] [-a|--all]` — filtered listing.
@@ -412,12 +351,11 @@ A typical Agent session:
 - `clew promote <id>` — _deferred._ Direct frontmatter edit (`status: backlog` → `status: todo`) suffices; the transition has no side effects. Revisit if MVP self-hosting reveals friction.
 - `clew start <id>` — → in_progress.
 - `clew block <id> "reason"` / `clew unblock <id>` — toggle blocked flag.
-- `clew done <id>` — → done, archive, remove from path. Does NOT touch `relay.md`.
+- `clew done <id>` — → done, archive, remove from path.
 - `clew abandon <id> "reason"` — → abandoned, archive.
 - `clew reopen <id>` — → todo, unarchive.
 - `clew next [--start]` — show (or start) the top of path / oldest todo.
 - `clew path` — open `path.md` in the user's configured editor.
-- `clew relay` — open/edit `.clew/relay.md` (no ID arg — single rolling file).
 - `clew lint` — flag drift (path/file mismatches, dangling references).
 - `clew renumber <old> <new>` — atomic ID renumber. Renames the file, rewrites the `id:` (and any `parent:`) field in frontmatter, scans **other increment files** (`increments/` and `archive/`) for `#NNNN` references in body or frontmatter and updates them, and updates `path.md`. Does **not** rewrite git history, commit messages, or external code/docs — those are immutable or out of scope.
 - `--json` optional flag: unclear if this will help agent comprehension or just waste tokens, will have to test later
@@ -507,7 +445,7 @@ This is documented in `.clew/README.md`'s "copy this into your AGENTS.md" sectio
 
 A `prepare-commit-msg` hook that auto-prefixes `[#NNNN]` based on the active increment is **explicitly deferred** for v1. Two real concerns:
 
-- **Staleness risk:** the hook would need to know the active increment, but `relay.md` can lag the agent's actual focus (e.g., agent ran `clew start 0050` but hasn't relay'd yet — hook prepends the prior `#0042` and creates a wrong-tag bug that's hard to debug).
+- **Staleness risk:** the hook would need to know the active increment, but the agent's actual focus can lag what Clew has recorded (e.g., agent ran `clew start 0050` but the active state hasn't caught up — hook prepends the prior `#0042` and creates a wrong-tag bug that's hard to debug).
 - **Platform fragility:** `.git/hooks/` shell scripts are OS-dependent; `clew init` shipping a hook becomes a per-platform support burden.
 
 If, after real-world use, agents consistently fail to prefix commits in practice, revisit. A `clew commit "msg"` wrapper (cross-platform, explicit, no hook) would be cleaner than `.git/hooks/` if we ever need automation.

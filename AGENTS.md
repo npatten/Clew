@@ -104,5 +104,5 @@ Do not claim a milestone is complete unless quality gate passes and `.clew/relay
 - Capture decisions and gotchas the next agent would otherwise lose time on.
 - Prefer exact paths, command names, and commit hashes already at hand.
 - Don't restate what's in crew-plan.md; reference where valuable.
-- Summarize — git logs detail.
+- Post-commit, drop the play-by-play. Once `[#NNNN]` is committed, the commit + archived increment are the record — don't re-list changes, gate output, or "pending review" status in the relay. Forward-looking context only.
 - Omit empty sections.

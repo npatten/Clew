@@ -333,7 +333,7 @@ A single hand-curated markdown file expressing priority order across all in-flig
 
 A relay is the artifact created when one agent session ends and another begins. It captures the **ephemeral context** that doesn't live in the increment file, git history, or the codebase: discoveries, next-actions, open questions, drift from plan.
 
-**Boundary with the increment file:** anything essential to resume work — plan, criteria, tasks, file paths the next session must touch — belongs in the increment itself. The relay is strictly for meta-context that doesn't fit neatly there: in-flight discoveries, judgment calls, gotchas that emerged this session. If you're tempted to put plan-shaped content in the relay, push it down into the increment instead.
+**Boundary with the increment file:** anything essential to resume work — plan, criteria, tasks, file paths the next session must touch — belongs in the increment itself. The relay is strictly for meta-context that doesn't fit neatly there: in-flight discoveries, judgment calls, gotchas that emerged this session. If you're tempted to put plan-shaped content in the relay, push it down into the increment instead. Likewise, anything recoverable from `git log` or the archived increment file does not belong here.
 
 ### Single rolling relay
 

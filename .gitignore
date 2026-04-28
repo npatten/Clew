@@ -1,3 +1,4 @@
 /target
 /subagent-artifacts
 .clew/.obsidian/*
+.DS_Store

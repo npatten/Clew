@@ -84,6 +84,20 @@ cargo test
 - Aim to keep titles under 7 words
 - Use direct markdown edits for backlog sharpening and simple metadata changes (status flips, tag tweaks) when that is clearer than adding CLI ceremony. For *creating* an increment with prose body, prefer `clew new` + stdin.
 - Try to track all work — if we start going down a path of material work without an associated increment, pause and propose creating a new increment in clew first.
+  
+**Milestone / Increment close protocol:**
+
+1. Finish work for the increment.
+2. Run the full quality gate.
+3. Sanity check if any docs need to be updated (`clew-spec.md` or clew increments)
+4. Ask for user approval:
+**Only after user approval:**
+5. Mark the increment done with `./clew done <id>`
+6. Commit work + any doc updates + updated clew files
+7. Confirm `git status --short` is as expected before reporting success.
+
+Do not claim a milestone is complete unless quality gate passes and state of clew work items are updated.
+
 
 ### Plan  discipline
 
@@ -95,13 +109,3 @@ cargo test
 - **Keep ~5 entries.** Prune the oldest when adding new ones; git history is the long memory.
 
 
-**Milestone close protocol:**
-
-1. Finish the chunk / milestone.
-2. Run the full quality gate.
-3. Sanity check if any docs need to be updated (`clew-spec.md` or clew increments)
-4. Ask for user approval.
-5. Only after user approval: Commit work + any doc updates + `./clew done <id>` on any completed increments
-6. Confirm `git status --short` clean before reporting success.
-
-Do not claim a milestone is complete unless quality gate passes and state of clew work items are updated.

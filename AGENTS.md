@@ -13,7 +13,7 @@ In Greek myth, Ariadne gave Theseus the "Clew" (a ball of thread) to navigate th
 
 ## Resources
 
-- Full project spec: `hammock-thinking/crew-plan.md`
+- Full project spec: `clew-spec.md`
 
 ## Software development
 
@@ -82,9 +82,9 @@ cargo test
 
 ### Plan  discipline
 
-`crew-plan.md` is the load-bearing living spec. It carries a `## Revisions` log and a `last_major_update` frontmatter field for human reviewers picking it up async.
+`clew-spec.md` is the load-bearing living spec. It carries a `## Revisions` log and a `last_major_update` frontmatter field for human reviewers picking it up async.
 
-- **When you make a meaningful design edit to `crew-plan.md`** (a pivot, a new decision, a deferral, a structural change), add one line to `## Revisions` and bump `last_major_update` to today's date.
+- **When you make a meaningful design edit to `clew-spec.md`** (a pivot, a new decision, a deferral, a structural change), add one line to `## Revisions` and bump `last_major_update` to today's date.
 - **Skip both for typo fixes, wording polish, formatting tweaks** — the threshold is "would a returning reviewer want to know this changed?"
 - **Revisions entries describe the _why_, not the diff.** "Collapsed status set; dropped `blocked` as a status" — not "edited section 4."
 - **Keep ~5 entries.** Prune the oldest when adding new ones; git history is the long memory.
@@ -94,7 +94,7 @@ cargo test
 
 1. Finish the chunk / milestone.
 2. Run the full quality gate.
-3. Sanity check if any docs need to be updated (`cew-plan.md` or clew increments)
+3. Sanity check if any docs need to be updated (`clew-spec.md` or clew increments)
 4. Ask for user approval.
 5. Only after user approval: Commit work + any doc updates + `./clew done <id>` on any completed increments
 6. Confirm `git status --short` clean before reporting success.

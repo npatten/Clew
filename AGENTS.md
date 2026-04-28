@@ -13,7 +13,7 @@ In Greek myth, Ariadne gave Theseus the "Clew" (a ball of thread) to navigate th
 
 ## Resources
 
-- Full project plan: `hammock-thinking/crew-plan.md`
+- Full project spec: `hammock-thinking/crew-plan.md`
 - Hand off from previous agent session: `relay.md`
 
 ## Software development
@@ -40,8 +40,8 @@ You are the principal engineer — guide the process, use sub-agents in parallel
 
 ### Git
 
-- One feature at a time; logical chunks that make sense together
-- ONLY commit files YOU changed as part of the current chunk
+- One feature / increment at a time; logical chunks that make sense together
+- ONLY commit files YOU changed as part of the current increment / chunk
 - Do not prefix commit messages with Clew increment refs until this repo has been bootstrapped with real `.clew/` increments. Use plain messages for now.
 - Credit your clanker as co-author. Always prefix the co-author line(s) with a `Clankers:` header, e.g.:
   - `Clankers:`

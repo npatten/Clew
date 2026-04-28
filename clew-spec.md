@@ -8,11 +8,11 @@ last_major_update: 2026-04-28
 
 ## Revisions
 
+- 2026-04-28 — self-hosting now uses a promoted local binary so `./clew` stays available while source builds are temporarily broken.
 - 2026-04-28 — `clew new` now writes a default `# Title` body when no body content is supplied, so freshly-created increments show their title in raw markdown.
 - 2026-04-28 — archive/reopen moves stay plain filesystem moves, not `git mv`; Clew must not mutate the git index, and reviewers can stage with `git add -A` to see renames.
 - 2026-04-28 — relay (`relay.md` + `clew relay`) pulled out of the design; in practice increments themselves are carrying cross-session context well enough that the rolling relay file added noise without earning its keep. Design parked under #0015 in case we revive it.
 - 2026-04-28 — `clew list` default includes the active working set (`backlog`, `todo`, `in_progress`); `-a`/`--all` adds archived terminal work for history scans.
-- 2026-04-28 — `clew new` accepts non-TTY stdin as increment body so agents can create titled, fully-described backlog items in one shell call.
 
 _Older entries pruned; use `git log hammock-thinking/crew-plan.md` for full history._
 
@@ -87,7 +87,7 @@ All state lives in plain markdown files with YAML frontmatter. Reasoning:
 └── README.md                        # conventions for humans + agents
 ```
 
-- **Hidden directory** (`.clew/`) — matches `.git/`, `.github/`, etc. Tooling/metadata convention. **Commit it.** `.clew/` is the project's shared state; treat it like source. Don't `.gitignore` it.
+- **Hidden directory** (`.clew/`) — matches `.git/`, `.github/`, etc. Tooling/metadata convention. **Commit it.** `.clew/` is the project's shared state; treat it like source. Don't `.gitignore` it, except for explicitly local-only subdirs like this repository's `.clew/bin/` promoted runner.
 - **Single `increments/` directory** — all items are increments. 
 - WIP: Parent-child relationships are still being designed. An increment with children is semantically an epic (a larger body of work that must ship together), but it's stored and treated like any other increment.
 - **Archive on done** — completed or abandoned increments move to `.clew/archive/`. Keeps working set small; preserves git history via normal rename detection once staged. Reopening (`clew reopen`) moves them back.
@@ -366,6 +366,14 @@ Cross-session context lives inside the active increment file (decisions, gotchas
 ## Implementation
 
 > Stack (`Cargo.toml`), project layout (`src/`), and the `Increment` struct shape are settled and live in code. Module organization conventions live in `AGENTS.md`. This section keeps only behavioral specs that shape future commands.
+
+### Self-hosting runner
+
+In this repository, the root `./clew` command is a thin launcher for `.clew/bin/clew`, a promoted known-good binary. It intentionally does not rebuild on every invocation; project management must remain available while in-progress source edits temporarily break `cargo build`.
+
+`scripts/promote-clew` is the promotion seam. It runs the quality gate, builds the release binary, and copies it into `.clew/bin/clew` only after those steps pass. The promoted binary is ignored by git because it is local build output, not shared project state.
+
+The benefit is availability and speed for agents. The cost is staleness: `./clew` can lag behind source until an explicit promotion.
 
 ### Error model
 

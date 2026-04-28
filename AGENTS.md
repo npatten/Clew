@@ -84,16 +84,23 @@ EOF
 
 1. Finish the implementation.
 2. Sanity check docs (especially `clew-spec.md`) and make any required updates.
-3. Run the full quality gate:
+3. Run the full quality gate and promote the stable local runner:
+
+   ```bash
+   scripts/promote-clew
+   ```
+
+   This runs:
 
    ```bash
    cargo fmt --check
    cargo clippy --all-targets -- -D warnings
    cargo test
+   cargo build --release
    ```
 
 - Failures are stop-the-line. Fix the root cause; no `#[allow(...)]`, `--no-verify`, or reformat-then-ignore without explicit user approval.
-- Re-run after every fix until all three pass in a single sweep.
+- Re-run after every fix until the promotion script passes in a single sweep.
 - If `cargo` is unavailable, say so explicitly rather than silently skipping.
 
 4. Ask the user for approval.

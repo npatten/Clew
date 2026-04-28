@@ -42,3 +42,15 @@ There are endless ways to manage software projects, if the below resonates, mayb
 _Recommend copy pasting the following chunk into your Agents.md or Claude.md_
 
 <insert table of essential / most common (i.e. always wanted in agent context) Clew commands here>
+
+### Self-hosting development
+
+In this repository, `./clew` is a thin launcher for a promoted stable binary at `.clew/bin/clew`. It does not run `cargo build` on every invocation, so Clew remains available while the working tree is temporarily broken.
+
+After a successful increment, promote the current source build with:
+
+```bash
+scripts/promote-clew
+```
+
+That script runs `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`, builds the release binary, and copies it to `.clew/bin/clew`. The promoted binary is local-only and ignored by git.

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
+cargo test
+cargo build --release
+
+mkdir -p .clew/bin
+cp target/release/clew .clew/bin/clew
+chmod +x .clew/bin/clew
+
+echo "Promoted target/release/clew to .clew/bin/clew" >&2

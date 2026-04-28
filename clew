@@ -1,4 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cargo build --quiet
-exec ./target/debug/clew "$@"
+
+script_dir="${BASH_SOURCE[0]%/*}"
+if [[ "$script_dir" == "${BASH_SOURCE[0]}" ]]; then
+  script_dir="."
+fi
+bin="$script_dir/.clew/bin/clew"
+
+if [[ ! -x "$bin" ]]; then
+  echo "stable clew binary missing: $bin" >&2
+  echo "run: scripts/promote-clew" >&2
+  exit 1
+fi
+
+exec "$bin" "$@"

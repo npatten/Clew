@@ -44,9 +44,12 @@ You are the principal engineer — guide the process, use sub-agents in parallel
 - ONLY commit files YOU changed as part of the current increment / chunk
 - Prefix commit messages with `[#NNNN]` when the work belongs to a real Clew increment. Use a plain message for repository/process cutovers that are not tied to an increment.
 - Credit your clanker as co-author. Always prefix the co-author line(s) with a `Clankers:` header, e.g.:
-  - `Clankers:`
-  - `Co-Authored-By: Claude <noreply@anthropic.com>`
-  - `Co-Authored-By: Codex <noreply@openai.com>`
+
+```
+  Clankers:
+  Co-Authored-By: Claude <noreply@anthropic.com>
+  Co-Authored-By: Codex <noreply@openai.com>
+```
 
 ### Clew workflow
 

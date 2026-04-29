@@ -5,7 +5,7 @@ use crate::error::ClewError;
 use crate::storage::fs;
 use chrono::{SecondsFormat, Utc};
 use std::collections::BTreeMap;
-use std::io::{IsTerminal, Write};
+use std::io::IsTerminal;
 
 pub fn run(title: &str, ready: bool, parent: Option<u32>) -> Result<(), ClewError> {
     let cwd = std::env::current_dir().map_err(ClewError::Io)?;
@@ -66,11 +66,9 @@ pub fn run(title: &str, ready: bool, parent: Option<u32>) -> Result<(), ClewErro
     let contents = frontmatter::serialize(&ParsedFile { increment, body })?;
 
     let filename = format!("{:04}-{}.md", next_id, new_slug);
-    fs::write_new_increment(&root, &filename, &contents)?;
+    let path = fs::write_new_increment(&root, &filename, &contents)?;
 
-    let stdout = std::io::stdout();
-    let mut handle = stdout.lock();
-    writeln!(handle, "{:04}", next_id).map_err(ClewError::Io)?;
+    crate::commands::print_result_line(&root, next_id, &path)?;
     Ok(())
 }
 

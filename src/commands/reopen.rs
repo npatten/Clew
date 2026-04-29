@@ -15,9 +15,11 @@ pub fn run(query: &str) -> Result<(), ClewError> {
         true,
     )?;
 
-    if transition.already_archived {
-        fs::unarchive_increment(&transition.path)?;
-    }
+    let result_path = if transition.already_archived {
+        fs::unarchive_increment(&transition.path)?
+    } else {
+        transition.path.clone()
+    };
 
     let stderr = std::io::stderr();
     let mut handle = stderr.lock();
@@ -33,5 +35,6 @@ pub fn run(query: &str) -> Result<(), ClewError> {
             .map_err(ClewError::Io)?;
     }
     writeln!(handle, "Reopened #{:04}", transition.id).map_err(ClewError::Io)?;
+    crate::commands::print_result_line(&root, transition.id, &result_path)?;
     Ok(())
 }

@@ -189,6 +189,30 @@ fn show_by_unpadded_id() {
 }
 
 #[test]
+fn show_by_canonical_reference() {
+    let temp = make_project();
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["show", "#0042"])
+        .assert()
+        .success()
+        .stdout(FIXTURE);
+}
+
+#[test]
+fn show_by_canonical_reference_with_slug() {
+    let temp = make_project();
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["show", "#0042-add-oauth-routes"])
+        .assert()
+        .success()
+        .stdout(FIXTURE);
+}
+
+#[test]
 fn show_by_slug() {
     let temp = make_project();
     Command::cargo_bin("clew")
@@ -301,7 +325,7 @@ fn new_creates_backlog_increment_with_padded_id() {
         .write_stdin("")
         .assert()
         .success()
-        .stdout("0001\n");
+        .stdout("#0001 .clew/increments/0001-add-oauth.md\n");
 
     let contents = read_increment(&temp, "0001-add-oauth.md");
     assert!(contents.contains("id: 1"));
@@ -323,7 +347,7 @@ fn new_reads_piped_stdin_body_verbatim() {
         .write_stdin(stdin)
         .assert()
         .success()
-        .stdout("0001\n");
+        .stdout("#0001 .clew/increments/0001-with-body.md\n");
 
     let contents = read_increment(&temp, "0001-with-body.md");
     assert_eq!(increment_body(&contents), stdin);
@@ -474,7 +498,11 @@ fn new_with_ready_flag_starts_in_todo() {
 #[test]
 fn new_allocates_sequential_ids() {
     let temp = empty_project();
-    for (title, expected_id) in [("First", "0001"), ("Second", "0002"), ("Third", "0003")] {
+    for (title, expected_id, expected_slug) in [
+        ("First", "0001", "first"),
+        ("Second", "0002", "second"),
+        ("Third", "0003", "third"),
+    ] {
         Command::cargo_bin("clew")
             .unwrap()
             .current_dir(temp.path())
@@ -482,7 +510,9 @@ fn new_allocates_sequential_ids() {
             .write_stdin("")
             .assert()
             .success()
-            .stdout(format!("{expected_id}\n"));
+            .stdout(format!(
+                "#{expected_id} .clew/increments/{expected_id}-{expected_slug}.md\n"
+            ));
     }
 }
 
@@ -502,7 +532,7 @@ fn new_id_allocation_includes_archive() {
         .write_stdin("")
         .assert()
         .success()
-        .stdout("0008\n");
+        .stdout("#0008 .clew/increments/0008-next.md\n");
 }
 
 #[test]
@@ -601,7 +631,7 @@ fn new_walks_up_to_find_clew_root() {
         .write_stdin("")
         .assert()
         .success()
-        .stdout("0001\n");
+        .stdout("#0001 .clew/increments/0001-from-subdir.md\n");
 
     assert!(temp
         .path()
@@ -958,7 +988,7 @@ fn start_transitions_todo_to_in_progress() {
         .args(["start", "1"])
         .assert()
         .success()
-        .stdout("")
+        .stdout("#0001 .clew/increments/0001-a.md\n")
         .stderr(contains("Started #0001"));
 
     let body = read_at(&temp, ".clew/increments/0001-a.md");
@@ -1132,9 +1162,9 @@ fn start_bumps_updated_at() {
 }
 
 #[test]
-fn new_output_is_pipeable_to_show() {
-    // The "stdout = data" principle: `clew new` prints just the ID so it can
-    // feed into other commands that accept ID lookups.
+fn new_output_first_token_is_pipeable_to_show() {
+    // The first stdout token is the canonical reference, so callers can pipe it
+    // explicitly with tools like `awk '{print $1}'`.
     let temp = empty_project();
     Command::cargo_bin("clew")
         .unwrap()
@@ -1142,16 +1172,35 @@ fn new_output_is_pipeable_to_show() {
         .args(["new", "Pipeable"])
         .write_stdin("")
         .assert()
-        .success();
+        .success()
+        .stdout("#0001 .clew/increments/0001-pipeable.md\n");
 
     Command::cargo_bin("clew")
         .unwrap()
         .current_dir(temp.path())
-        .args(["show", "0001"])
+        .args(["show", "#0001"])
         .assert()
         .success()
         .stdout(contains("id: 1"))
         .stdout(contains("# Pipeable"));
+}
+
+#[test]
+fn start_rejects_extra_positional_arguments() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "todo", None),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["start", "#0001", ".clew/increments/0001-a.md"])
+        .assert()
+        .failure();
 }
 
 // ---------------------------------------------------------------------------
@@ -1174,7 +1223,7 @@ fn block_sets_reason_and_bumps_updated_at() {
         .args(["block", "1", "waiting on #0039"])
         .assert()
         .success()
-        .stdout("")
+        .stdout("#0001 .clew/increments/0001-a.md\n")
         .stderr(contains("Blocked #0001"));
 
     let body = read_at(&temp, ".clew/increments/0001-a.md");
@@ -1274,7 +1323,7 @@ fn unblock_removes_reason_and_bumps_updated_at() {
         .args(["unblock", "1"])
         .assert()
         .success()
-        .stdout("")
+        .stdout("#0001 .clew/increments/0001-a.md\n")
         .stderr(contains("Unblocked #0001"));
 
     let body = read_at(&temp, ".clew/increments/0001-a.md");
@@ -1298,7 +1347,7 @@ fn unblock_already_unblocked_warns_without_bumping_timestamp() {
         .args(["unblock", "a"])
         .assert()
         .success()
-        .stdout("")
+        .stdout("#0001 .clew/increments/0001-a.md\n")
         .stderr(contains("warning: #0001 is already unblocked"));
 
     let body = read_at(&temp, ".clew/increments/0001-a.md");
@@ -1325,7 +1374,7 @@ fn done_transitions_in_progress_to_done_and_archives() {
         .args(["done", "1"])
         .assert()
         .success()
-        .stdout("")
+        .stdout("#0001 .clew/archive/0001-a.md\n")
         .stderr(contains("Done #0001"));
 
     assert!(!temp.path().join(".clew/increments/0001-a.md").exists());
@@ -1425,6 +1474,7 @@ fn done_self_loop_tolerates_hand_edited_done_and_archives_without_bumping_timest
         .args(["done", "1"])
         .assert()
         .success()
+        .stdout("#0001 .clew/archive/0001-a.md\n")
         .stderr(contains(
             "warning: #0001 already marked done; completing archive",
         ))
@@ -1454,6 +1504,7 @@ fn done_already_archived_done_is_success_with_warning() {
         .args(["done", "1"])
         .assert()
         .success()
+        .stdout("#0001 .clew/archive/0001-a.md\n")
         .stderr(contains("warning: #0001 already archived"))
         .stderr(contains("Done #0001"));
 
@@ -1503,7 +1554,7 @@ fn abandon_transitions_in_progress_to_abandoned_archives_and_records_reason() {
         .args(["abandon", "1", "not worth doing"])
         .assert()
         .success()
-        .stdout("")
+        .stdout("#0001 .clew/archive/0001-a.md\n")
         .stderr(contains("Abandoned #0001"));
 
     assert!(!temp.path().join(".clew/increments/0001-a.md").exists());
@@ -1584,7 +1635,7 @@ fn abandon_without_reason_warns_and_archives() {
         .args(["abandon", "1"])
         .assert()
         .success()
-        .stdout("")
+        .stdout("#0001 .clew/archive/0001-a.md\n")
         .stderr(contains(
             "warning: #0001 is abandoned without an abandoned_reason",
         ))
@@ -1739,7 +1790,7 @@ fn reopen_transitions_archived_done_to_todo_and_unarchives() {
         .args(["reopen", "1"])
         .assert()
         .success()
-        .stdout("")
+        .stdout("#0001 .clew/increments/0001-a.md\n")
         .stderr(contains("Reopened #0001"));
 
     assert!(!temp.path().join(".clew/archive/0001-a.md").exists());

@@ -128,13 +128,20 @@ pub fn find_clew_root(start: &Path) -> Result<PathBuf, ClewError> {
 /// - the leading 4-digit ID equals the parsed integer form of the query, or
 /// - the slug portion (filename without `NNNN-` prefix and `.md` suffix) equals the query.
 pub fn resolve(root: &Path, query: &str) -> Result<PathBuf, ClewError> {
-    if let Ok(qid) = query.parse() {
+    let normalized_query = query.strip_prefix('#').unwrap_or(query);
+    if let Ok(qid) = normalized_query.parse() {
         if let Some(path) = find_matching(root, |id, _slug| id == qid)? {
             return Ok(path);
         }
     }
 
-    if let Some(path) = find_matching(root, |_id, slug| slug == query)? {
+    if let Some((qid, _slug)) = split_filename(normalized_query) {
+        if let Some(path) = find_matching(root, |id, _slug| id == qid)? {
+            return Ok(path);
+        }
+    }
+
+    if let Some(path) = find_matching(root, |_id, slug| slug == normalized_query)? {
         return Ok(path);
     }
 
@@ -376,6 +383,42 @@ mod tests {
         assert_eq!(
             resolved.file_name().and_then(|s| s.to_str()),
             Some("0042-real.md")
+        );
+    }
+
+    #[test]
+    fn resolve_accepts_canonical_reference_form() {
+        let temp = assert_fs::TempDir::new().unwrap();
+        std::fs::create_dir_all(temp.path().join(".clew/increments")).unwrap();
+        std::fs::write(
+            temp.path().join(".clew/increments/0042-real.md"),
+            "id match",
+        )
+        .unwrap();
+
+        let resolved = resolve(temp.path(), "#0042").unwrap();
+
+        assert_eq!(
+            resolved.file_name().and_then(|s| s.to_str()),
+            Some("0042-real.md")
+        );
+    }
+
+    #[test]
+    fn resolve_accepts_canonical_reference_with_slug() {
+        let temp = assert_fs::TempDir::new().unwrap();
+        std::fs::create_dir_all(temp.path().join(".clew/increments")).unwrap();
+        std::fs::write(
+            temp.path().join(".clew/increments/0042-add-oauth.md"),
+            "id match",
+        )
+        .unwrap();
+
+        let resolved = resolve(temp.path(), "#0042-add-oauth").unwrap();
+
+        assert_eq!(
+            resolved.file_name().and_then(|s| s.to_str()),
+            Some("0042-add-oauth.md")
         );
     }
 

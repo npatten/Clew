@@ -24,9 +24,11 @@ pub fn run(query: &str) -> Result<(), ClewError> {
         .collect::<BTreeMap<_, _>>();
     let path_md = path::normalize(&path_md, &slugs_by_id);
 
-    if !transition.already_archived {
-        fs::archive_increment(&transition.path)?;
-    }
+    let result_path = if transition.already_archived {
+        transition.path.clone()
+    } else {
+        fs::archive_increment(&transition.path)?
+    };
     fs::write_path_md(&root, &path_md)?;
 
     let stderr = std::io::stderr();
@@ -43,5 +45,6 @@ pub fn run(query: &str) -> Result<(), ClewError> {
         .map_err(ClewError::Io)?;
     }
     writeln!(handle, "Done #{:04}", transition.id).map_err(ClewError::Io)?;
+    crate::commands::print_result_line(&root, transition.id, &result_path)?;
     Ok(())
 }

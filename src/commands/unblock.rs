@@ -19,7 +19,7 @@ pub fn run(query: &str) -> Result<(), ClewError> {
 
     if parsed.increment.blocked_reason.is_none() {
         writeln!(handle, "warning: #{id:04} is already unblocked").map_err(ClewError::Io)?;
-        return Ok(());
+        return crate::commands::print_result_line(&root, id, &path);
     }
 
     parsed.increment.blocked_reason = None;
@@ -31,5 +31,6 @@ pub fn run(query: &str) -> Result<(), ClewError> {
     let serialized = frontmatter::serialize(&parsed)?;
     fs::write_increment(&path, &serialized)?;
 
-    writeln!(handle, "Unblocked #{id:04}").map_err(ClewError::Io)
+    writeln!(handle, "Unblocked #{id:04}").map_err(ClewError::Io)?;
+    crate::commands::print_result_line(&root, id, &path)
 }

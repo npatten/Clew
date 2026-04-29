@@ -30,7 +30,8 @@ pub fn run(query: &str, reason: &str) -> Result<(), ClewError> {
 
     let stderr = std::io::stderr();
     let mut handle = stderr.lock();
-    writeln!(handle, "Blocked #{id:04}").map_err(ClewError::Io)
+    writeln!(handle, "Blocked #{id:04}").map_err(ClewError::Io)?;
+    crate::commands::print_result_line(&root, id, &path)
 }
 
 pub(crate) fn ensure_blockable(

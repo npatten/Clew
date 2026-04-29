@@ -10,7 +10,7 @@ pub fn run(start: bool) -> Result<(), ClewError> {
     let id = select_next(&root)?;
 
     let id = if start {
-        crate::commands::start::start(&root, &id.to_string())?
+        crate::commands::start::start(&root, &id.to_string())?.id
     } else {
         id
     };

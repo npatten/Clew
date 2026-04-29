@@ -8,11 +8,11 @@ last_major_update: 2026-04-28
 
 ## Revisions
 
+- 2026-04-28 — CLI success output now treats stdout as machine-usable result data, with stderr reserved for warnings, errors, and human status chatter; this lets agents consume IDs and filepaths without extra lookup calls.
 - 2026-04-28 — self-hosting now uses a promoted local binary so `./clew` stays available while source builds are temporarily broken.
 - 2026-04-28 — `clew new` now writes a default `# Title` body when no body content is supplied, so freshly-created increments show their title in raw markdown.
 - 2026-04-28 — archive/reopen moves stay plain filesystem moves, not `git mv`; Clew must not mutate the git index, and reviewers can stage with `git add -A` to see renames.
 - 2026-04-28 — relay (`relay.md` + `clew relay`) pulled out of the design; in practice increments themselves are carrying cross-session context well enough that the rolling relay file added noise without earning its keep. Design parked under #0015 in case we revive it.
-- 2026-04-28 — `clew list` default includes the active working set (`backlog`, `todo`, `in_progress`); `-a`/`--all` adds archived terminal work for history scans.
 
 _Older entries pruned; use `git log hammock-thinking/crew-plan.md` for full history._
 
@@ -393,7 +393,9 @@ Layered:
 - **Unit tests in-module** (`#[cfg(test)] mod tests`) for `core/` — parser edge cases, status transitions, slug rules, ID parsing. Fast, no I/O. Use `rstest` for parameterized cases.
 - **Integration tests in `tests/`** for command wiring. One happy path per command + a few cross-command flows (create → start → done). Use `assert_cmd` + `assert_fs` for isolated tempdirs.
 - **Snapshot tests with `insta`** for the generated markdown+frontmatter. The output IS our agent-facing API; format drift is a real bug.
-- **stdout = data; stderr = status/errors.** Codified and tested. `clew next | xargs ...` should give clean data; `clew done 0042` may print "Archived #0042" to stderr.
+- **CLI output contract:** stdout emits machine-usable result data for successful commands; stderr is reserved for warnings, errors, progress, and human-oriented status chatter. Codified and tested. A command may still print human status to stderr, but any data an agent or shell pipeline should consume belongs on stdout.
+  - For successful commands that create, move, or identify an increment, stdout should include the canonical reference and current repo-relative filepath: `#0042 .clew/increments/0042-add-oauth-routes.md`.
+  - Commands that accept an increment query should accept the canonical prose reference form (`#0042`) in addition to numeric IDs and slugs.
 - Coverage target: not chasing a number. The goal is "every status transition, every frontmatter edge case, every command's happy path" — naturally lands ~80%+.
 
 ### Editor resolution

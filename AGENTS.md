@@ -124,3 +124,19 @@ Do not claim an increment is complete unless the quality gate passed and Clew wo
 - **Skip both for typo fixes, wording polish, formatting tweaks** — the threshold is "would a returning reviewer want to know this changed?"
 - **Revisions entries describe the _why_, not the diff.** "Collapsed status set; dropped `blocked` as a status" — not "edited section 4."
 - **Keep ~5 entries.** Prune the oldest when adding new ones; git history is the long memory.
+
+## Agent skills
+
+Matt Pocock engineering skills must read `docs/agents/*.md` before making issue-tracker, triage, or domain-doc assumptions.
+
+### Issue tracker
+
+Work items are tracked in Clew increments, not GitHub Issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Matt's triage roles map to Clew tags, with `wontfix` handled by abandoning the increment. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context repo: read `CONTEXT.md` for vocabulary and `clew-spec.md` for the full living design. See `docs/agents/domain.md`.

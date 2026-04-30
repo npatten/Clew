@@ -60,6 +60,12 @@ You are the principal engineer — guide the process, use sub-agents in parallel
 - Prefer Clew's documented no-flag workflow; the core loop is mostly positional.
 - Do not guess flags. Use the no-flag form unless `./clew <cmd> --help` documents a flag needed for the task.
 - Use `./clew list` as the canonical view of project work. Prefer it over inspecting `.clew/increments/` or `.clew/archive/` directly.
+- Use list filters instead of inspecting files directly when narrowing work:
+  ```bash
+  ./clew list --tag windows
+  ./clew list --status todo
+  ./clew list --tag windows --status todo
+  ```
 - Let `clew new` allocate IDs. Do not pre-compute the next ID from list output.
 
 #### Starting work

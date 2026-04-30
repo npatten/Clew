@@ -1,0 +1,7 @@
+{
+  "retry": {
+    "provider": {
+      "timeoutMs": 400000
+    }
+  }
+}

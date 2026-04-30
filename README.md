@@ -12,7 +12,7 @@ There are endless ways to manage software projects, if the below resonates, mayb
 - be as simple as possible while pursuing a goldilocks zone of features and capabilities
   - _(very much inspired by [Rich Hickey's talk "Simple Made Easy"](https://www.youtube.com/watch?v=LKtk3HCgTa8))_
 - be optimized for agents and humans equally
-  - CLI-first _(nice TUI or even a full GUI possible later)_
+  - CLI-first _(GUI possible later)_
   - human readable
 - agent harness agnostic
   - easily support swapping harnesses frequently in the same project
@@ -24,13 +24,6 @@ There are endless ways to manage software projects, if the below resonates, mayb
 - integrate well with git
   - be a part of the respective project repo
   - rely on your git remote of choice for cloud syncs / backups
-
-#### What Clew is not:
-
-- Clew isn't designed for token or parallel agent maxing. At the time of design (April 2026), my workflows centered around one maaaybe two primary agents; starting new sessions after each 'stable' increment of work. These primary agents can and often spin up sub-agents, but more for token efficiency than tackling parallel units of tracked work from a project management stand point
-  - e.g. 'scout' sub-agents are great at efficiently getting context from the code base, but they aren't tackling features on their own etc...
-- based on any specific school of thought of SCRUM or any other such over-sold consulting product.
-- trying to replace enterprise tooling like Jira, or compete with broader knowledge systems like Monday.com or ClickUp; it's for individuals or tiny teams and their agents.
 
 ### Core Concepts
 

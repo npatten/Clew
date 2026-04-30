@@ -13,8 +13,10 @@ pub mod next;
 pub mod reopen;
 pub mod show;
 pub mod start;
+pub mod tag;
 pub mod transition;
 pub mod unblock;
+pub mod untag;
 
 pub(crate) fn print_result_line(root: &Path, id: u32, path: &Path) -> Result<(), ClewError> {
     let stdout = std::io::stdout();

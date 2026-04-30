@@ -1,5 +1,5 @@
 ---
-last_major_update: 2026-04-28
+last_major_update: 2026-04-30
 ---
 
 # Clew — Design Plan
@@ -8,11 +8,11 @@ last_major_update: 2026-04-28
 
 ## Revisions
 
+- 2026-04-30 — Tag writes moved into the CLI (`clew new --tag`, `clew tag`, `clew untag`) because tags affect capture/search timing, while stdin remains body-only to avoid frontmatter merge semantics.
 - 2026-04-28 — CLI success output now treats stdout as machine-usable result data, with stderr reserved for warnings, errors, and human status chatter; this lets agents consume IDs and filepaths without extra lookup calls.
 - 2026-04-28 — self-hosting now uses a promoted local binary so `./clew` stays available while source builds are temporarily broken.
 - 2026-04-28 — `clew new` now writes a default `# Title` body when no body content is supplied, so freshly-created increments show their title in raw markdown.
 - 2026-04-28 — archive/reopen moves stay plain filesystem moves, not `git mv`; Clew must not mutate the git index, and reviewers can stage with `git add -A` to see renames.
-- 2026-04-28 — relay (`relay.md` + `clew relay`) pulled out of the design; in practice increments themselves are carrying cross-session context well enough that the rolling relay file added noise without earning its keep. Design parked under #0015 in case we revive it.
 
 _Older entries pruned; use `git log hammock-thinking/crew-plan.md` for full history._
 
@@ -135,14 +135,15 @@ status: in_progress # backlog | todo | in_progress | done | abandoned
 blocked_reason: "waiting on #0039" # optional; presence = blocked. Quote any value containing `#` (YAML treats bare `#` as comment)
 abandoned_reason: "..." # optional; written by `clew abandon`; preserved through archive/reopen
 parent: 7 # optional; this increment is a child of increment 0007 - WIP design
-tags: [auth, p0] # optional, free-form, CLI-aware
+tags: [auth, p0] # optional, CLI-aware; values must match [a-z0-9][a-z0-9-]*
 created_at: 2026-04-20T10:00:00Z
 updated_at: 2026-04-25T14:30:00Z
 ---
 ```
 
 CLI-managed fields: `id`, `status`, `created_at`, `updated_at`. CLI-aware: `parent`, `blocked_reason`, `abandoned_reason`, `tags`. Everything else is preserved-but-ignored — see Extensibility below.
-(note: tags are searchable via CLI)
+
+Tags are searchable and writable via CLI. `clew new --tag X` attaches tags at capture time; `clew tag` / `clew untag` edit existing increments. Tag input is validated, not normalized, so `Windows` and `windows` cannot drift into separate case-sensitive tags. Repeated tags are deduplicated in first-seen order.
 
 **`id` and `parent` in frontmatter are plain integers**, not zero-padded strings. Zero-padding is a presentation rule for **filenames** (`0042-add-oauth-routes.md`) and **prose references** (`#0042`); the YAML scalar is just an integer. (YAML 1.2 parses `0042` as a string anyway, which would break `u32` deserialization.) The CLI renders `#NNNN` form on output regardless.
 
@@ -249,7 +250,7 @@ _This handles hand-edit-then-CLI workflows without inviting `--force`. Note: `cl
 
 Operators (humans or agents) can hand-edit `status:` and frontmatter directly. The CLI is convenience over the markdown, not a gate.
 
-- **Pure-metadata changes** (`backlog → todo`, tags, `blocked_reason`, body) need no reconciliation. `updated_at` won't bump per the timestamp rules above; that's the documented tradeoff.
+- **Pure-metadata changes** (`backlog → todo`, tags, `blocked_reason`, body) need no reconciliation. `updated_at` won't bump per the timestamp rules above when edited by hand; CLI tag edits do bump it.
 - **Terminal-side-effect transitions** (`done`, `abandoned`, `reopen`) involve file moves and `path.md` updates — prefer the CLI command. If hand-edited first, the corresponding CLI command tolerates the already-flipped state and completes the side effects (see self-loop tolerance above).
 - **`clew lint` is advisory.** It surfaces drift (e.g., `status: done` in `increments/`) and names the right command. It does not silently fix; reconciliation goes through the original transition command, used after the fact.
 
@@ -281,7 +282,7 @@ YAML frontmatter is _already_ extensible. Users who want `priority: high` or `so
 
 1. **Permissive parser.** The CLI reads frontmatter, acts only on fields it knows, and **preserves unknown fields on write.** This is the single most important behavior.
 2. **Documented in `.clew/README.md`**: "You can add any fields you want. Clew preserves them but won't act on them. Use `rg` or `grep` to query."
-3. **`tags` is the universal escape hatch.** CLI-aware (`clew list --tag p0`), free-form, covers ~95% of real extensibility needs.
+3. **`tags` is the universal escape hatch.** CLI-aware (`clew list --tag p0`, `clew new --tag p0`, `clew tag` / `clew untag`), constrained to `[a-z0-9][a-z0-9-]*`, covers ~95% of real extensibility needs.
 
 ### What we deliberately don't have
 
@@ -343,7 +344,7 @@ Cross-session context lives inside the active increment file (decisions, gotchas
 ## CLI sketch
 
 - `clew init` — scaffold `.clew/` in the current directory: creates `increments/`, `archive/`, empty `path.md`, and a templated `README.md`. Also creates `#0000-bootstrap-clew` as a real setup task (instructs the user to copy the harness-integration section from `.clew/README.md` into their `AGENTS.md` / `CLAUDE.md`, then run `clew done 0000`). The bootstrap takes `#0000` so the user's first real increment is `#0001`.
-- `clew new "<title>"` — creates in `backlog` (or `todo` with `--ready`) with a default `# <title>` body. Optional `--parent <id>` flag to link to a parent increment. If stdin is non-TTY and contains body content, reads it verbatim as the increment body instead; stdin is body-only, and leading frontmatter delimiters are rejected.
+- `clew new "<title>" [--tag X ...]` — creates in `backlog` (or `todo` with `--ready`) with a default `# <title>` body. Optional `--parent <id>` flag links to a parent increment. Repeated singular `--tag <tag>` attaches one or more tags; no CSV form. If stdin is non-TTY and contains body content, reads it verbatim as the increment body instead; stdin is body-only, and leading frontmatter delimiters are rejected.
 - `clew show <id>` — accepts numeric ID or slug. Default output: raw markdown (frontmatter + body) to stdout. In an interactive TTY, opens the file in the configured editor instead. `--json` optional for structured output.
 - `clew list [--tag X] [--status Y] [-a|--all]` — filtered listing.
   - **Default:** `backlog + todo + in_progress` (non-archived, non-terminal working set).
@@ -352,6 +353,7 @@ Cross-session context lives inside the active increment file (decisions, gotchas
 - `clew promote <id>` — _deferred._ Direct frontmatter edit (`status: backlog` → `status: todo`) suffices; the transition has no side effects. Revisit if MVP self-hosting reveals friction.
 - `clew start <id>` — → in_progress.
 - `clew block <id> "reason"` / `clew unblock <id>` — toggle blocked flag.
+- `clew tag <id> <tag>...` / `clew untag <id> <tag>...` — add or remove tags. Adding an existing tag is idempotent success; removing a missing tag is a user error.
 - `clew done <id>` — → done, archive, remove from path.
 - `clew abandon <id> "reason"` — → abandoned, archive.
 - `clew reopen <id>` — → todo, unarchive.

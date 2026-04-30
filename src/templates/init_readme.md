@@ -24,7 +24,23 @@ Why this increment matters.
 EOF
 ```
 
-Clew writes frontmatter itself; stdin is body content only. Passing stdin replaces the default title-heading body.
+Attach tags at capture time with repeated singular `--tag` flags:
+
+```bash
+clew new "Verify Clew on WSL" --tag windows --tag distribution <<'EOF'
+## Goal
+Verify Clew works on WSL.
+EOF
+```
+
+Clew writes frontmatter itself; stdin is body content only. Passing stdin replaces the default title-heading body. Tags must match `[a-z0-9][a-z0-9-]*`.
+
+For existing increments, use:
+
+```bash
+clew tag 0019 windows p0
+clew untag 0019 windows
+```
 
 ## Reviewing archive moves
 

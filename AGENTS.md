@@ -56,7 +56,7 @@ You are the principal engineer — guide the process, use sub-agents in parallel
 #### Core rules
 
 - Always invoke Clew as `./clew` from the repo root.
-- Documented loop commands: `init`, `new`, `start`, `done`, `show`, `list`. Other commands may be wired and visible in `./clew --help`, but are not part of the stable MVP loop yet.
+- Documented loop commands: `init`, `new`, `start`, `done`, `show`, `list`, `tag`, `untag`. Other commands may be wired and visible in `./clew --help`, but are not part of the stable MVP loop yet.
 - Prefer Clew's documented no-flag workflow; the core loop is mostly positional.
 - Do not guess flags. Use the no-flag form unless `./clew <cmd> --help` documents a flag needed for the task.
 - Use `./clew list` as the canonical view of project work. Prefer it over inspecting `.clew/increments/` or `.clew/archive/` directly.
@@ -79,7 +79,24 @@ Prefer creating increments with the body supplied on stdin:
 EOF
 ```
 
+Attach tags at creation with repeated `--tag` flags; stdin remains body-only, never frontmatter:
+
+```bash
+./clew new "Verify Clew on WSL" --tag windows --tag distribution <<'EOF'
+## Goal
+Verify Clew works on WSL.
+EOF
+```
+
+Use dedicated tag commands for existing increments:
+
+```bash
+./clew tag 0019 windows p0
+./clew untag 0019 windows
+```
+
 - Keep titles under 7 words.
+- Tags must match `[a-z0-9][a-z0-9-]*`; do not use uppercase, `#`, whitespace, or comma-separated tags.
 - Use direct markdown edits for backlog sharpening and simple metadata changes when clearer than adding CLI ceremony.
 - If material work emerges without an associated increment, pause and propose creating one before continuing.
 

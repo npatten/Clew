@@ -12,6 +12,8 @@ fn main() -> ExitCode {
                 | clew::ClewError::SlugCollision { .. }
                 | clew::ClewError::InvalidStdin
                 | clew::ClewError::InvalidStatusFilter(_)
+                | clew::ClewError::InvalidTag { .. }
+                | clew::ClewError::MissingTag { .. }
                 | clew::ClewError::EmptyReason
                 | clew::ClewError::ArchivedIncrement { .. }
                 | clew::ClewError::NoNextIncrement

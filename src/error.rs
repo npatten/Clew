@@ -1,3 +1,4 @@
+use crate::core::tag;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -27,6 +28,12 @@ pub enum ClewError {
     )]
     InvalidStatusFilter(String),
 
+    #[error("invalid tag: '{value}' (expected [a-z0-9][a-z0-9-]*){hint}", hint = hint.as_ref().map(|h| format!("; try: {h}")).unwrap_or_default())]
+    InvalidTag { value: String, hint: Option<String> },
+
+    #[error("increment #{id:04} does not have tag '{tag}'")]
+    MissingTag { id: u32, tag: String },
+
     #[error("reason must not be empty")]
     EmptyReason,
 
@@ -44,4 +51,13 @@ pub enum ClewError {
 
     #[error("not yet implemented")]
     Unimplemented,
+}
+
+impl From<tag::InvalidTag> for ClewError {
+    fn from(value: tag::InvalidTag) -> Self {
+        ClewError::InvalidTag {
+            value: value.value,
+            hint: value.hint,
+        }
+    }
 }

@@ -1,13 +1,21 @@
 use crate::core::frontmatter::{self, ParsedFile};
 use crate::core::increment::{Increment, Status};
-use crate::core::slug;
+use crate::core::{slug, tag};
 use crate::error::ClewError;
 use crate::storage::fs;
 use chrono::{SecondsFormat, Utc};
 use std::collections::BTreeMap;
 use std::io::IsTerminal;
 
-pub fn run(title: &str, ready: bool, parent: Option<u32>) -> Result<(), ClewError> {
+pub fn run(
+    title: &str,
+    ready: bool,
+    parent: Option<u32>,
+    tags: &[String],
+) -> Result<(), ClewError> {
+    tag::validate_all(tags)?;
+    let tags = tag::dedupe_preserving_order(tags.to_vec());
+
     let cwd = std::env::current_dir().map_err(ClewError::Io)?;
     let root = fs::find_clew_root(&cwd)?;
 
@@ -57,7 +65,7 @@ pub fn run(title: &str, ready: bool, parent: Option<u32>) -> Result<(), ClewErro
         parent,
         blocked_reason: None,
         abandoned_reason: None,
-        tags: Vec::new(),
+        tags,
         created_at: now,
         updated_at: now,
         extra: BTreeMap::new(),

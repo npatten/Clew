@@ -34,7 +34,9 @@ fn new_help_documents_arguments_and_flags() {
         .stdout(contains("--ready"))
         .stdout(contains("Create the increment as todo instead of backlog"))
         .stdout(contains("--parent <PARENT>"))
-        .stdout(contains("Parent increment ID"));
+        .stdout(contains("Parent increment ID"))
+        .stdout(contains("--tag <TAGS>"))
+        .stdout(contains("Tag to attach; repeat for multiple tags"));
 }
 
 // ---------------------------------------------------------------------------
@@ -496,6 +498,81 @@ fn new_with_ready_flag_starts_in_todo() {
 }
 
 #[test]
+fn new_with_repeated_tag_writes_tags_and_keeps_stdin_body_verbatim() {
+    let temp = empty_project();
+    let stdin = "## Goal\nVerify Clew works on WSL and Git Bash.\n";
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args([
+            "new",
+            "Verify Clew on WSL and Git Bash",
+            "--tag",
+            "windows",
+            "--tag",
+            "distribution",
+        ])
+        .write_stdin(stdin)
+        .assert()
+        .success()
+        .stdout("#0001 .clew/increments/0001-verify-clew-on-wsl-and-git-bash.md\n");
+
+    let contents = read_increment(&temp, "0001-verify-clew-on-wsl-and-git-bash.md");
+    assert!(contents.contains("tags:\n- windows\n- distribution\n"));
+    assert_eq!(increment_body(&contents), stdin);
+}
+
+#[test]
+fn new_rejects_leading_frontmatter_even_with_tag() {
+    let temp = empty_project();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "Bad body", "--tag", "windows"])
+        .write_stdin("---\ntags: [windows]\n---\n")
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains("stdin appears to contain frontmatter"));
+}
+
+#[test]
+fn new_dedupes_tags_preserving_first_seen_order() {
+    let temp = empty_project();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args([
+            "new", "Tagged", "--tag", "windows", "--tag", "p0", "--tag", "windows",
+        ])
+        .write_stdin("")
+        .assert()
+        .success();
+
+    let contents = read_increment(&temp, "0001-tagged.md");
+    assert!(contents.contains("tags:\n- windows\n- p0\n"));
+}
+
+#[test]
+fn new_rejects_invalid_tag_with_hint() {
+    let temp = empty_project();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "Bad tag", "--tag", "Windows"])
+        .write_stdin("")
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains("invalid tag: 'Windows'"))
+        .stderr(contains("try: windows"));
+}
+
+#[test]
 fn new_allocates_sequential_ids() {
     let temp = empty_project();
     for (title, expected_id, expected_slug) in [
@@ -668,6 +745,129 @@ fn write_increment(temp: &assert_fs::TempDir, subdir: &str, filename: &str, body
     temp.child(format!(".clew/{subdir}/{filename}"))
         .write_str(body)
         .unwrap();
+}
+
+#[test]
+fn tag_appends_tags_and_updates_updated_at() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "todo", Some("[auth]")),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["tag", "1", "windows", "p0"])
+        .assert()
+        .success()
+        .stdout("#0001 .clew/increments/0001-a.md\n");
+
+    let contents = read_increment(&temp, "0001-a.md");
+    assert!(contents.contains("tags:\n- auth\n- windows\n- p0\n"));
+    assert!(!contents.contains("updated_at: 2026-04-20T10:00:00Z"));
+}
+
+#[test]
+fn tag_existing_tag_is_idempotent_success() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "todo", Some("[auth]")),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["tag", "1", "auth"])
+        .assert()
+        .success()
+        .stdout("#0001 .clew/increments/0001-a.md\n");
+
+    let contents = read_increment(&temp, "0001-a.md");
+    assert!(contents.contains("tags: [auth]\n"));
+    assert!(contents.contains("updated_at: 2026-04-20T10:00:00Z"));
+}
+
+#[test]
+fn untag_removes_tags_and_updates_updated_at() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "todo", Some("[auth, windows, p0]")),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["untag", "1", "windows"])
+        .assert()
+        .success()
+        .stdout("#0001 .clew/increments/0001-a.md\n");
+
+    let contents = read_increment(&temp, "0001-a.md");
+    assert!(contents.contains("tags:\n- auth\n- p0\n"));
+    assert!(!contents.contains("updated_at: 2026-04-20T10:00:00Z"));
+}
+
+#[test]
+fn untag_missing_tag_is_user_error() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "todo", Some("[auth]")),
+    );
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["untag", "1", "windows"])
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains("does not have tag 'windows'"));
+}
+
+#[test]
+fn list_finds_tags_from_new_and_tag_commands() {
+    let temp = empty_project();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "First", "--tag", "windows"])
+        .write_stdin("")
+        .assert()
+        .success();
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "Second"])
+        .write_stdin("")
+        .assert()
+        .success();
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["tag", "2", "windows"])
+        .assert()
+        .success();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["list", "--tag", "windows"])
+        .assert()
+        .success()
+        .stdout("0001 backlog first\n0002 backlog second\n");
 }
 
 #[test]

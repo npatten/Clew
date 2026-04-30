@@ -43,15 +43,15 @@ There are endless ways to manage software projects, if the below resonates, mayb
 
 _Recommended agent context: copy this table into your `AGENTS.md` or `CLAUDE.md`._
 
-| Need                | Clew command                                                      | Why it matters                                                                 |
-| ------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| See available work  | `./clew list`                                                     | Gives the canonical local backlog without reading hidden files.                |
-| Narrow the queue    | `./clew list --status todo`<br>`./clew list --tag bug`            | Lets agents pick relevant work without guessing priorities.                    |
-| Read the full issue | `./clew show 0024`                                                | Loads the complete increment: goal, notes, tasks, and acceptance criteria.     |
-| Create a new issue  | `./clew new "Short title" <<'EOF'`<br>`## Goal`<br>`...`<br>`EOF` | Captures work in the repo, in plain markdown, with an allocated ID.            |
-| Label work          | `./clew tag 0024 bug p0`<br>`./clew untag 0024 p0`                | Keeps triage lightweight and visible to humans and agents.                     |
-| Start work          | `./clew start 0024`                                               | Marks ownership and makes the active increment explicit.                       |
-| Finish stable work  | `./clew done 0024`                                                | Archives the completed increment after tests pass and the repo is committable. |
+| Need                | Clew command                                                               | Why it matters                                                                 |
+| ------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| See available work  | <pre>./clew list</pre>                                                     | Gives the canonical local backlog without reading hidden files.                |
+| Narrow the queue    | <pre>./clew list --status todo</pre><br><pre>./clew list --tag bug</pre>   | Lets agents pick relevant work without guessing priorities.                    |
+| Read the full issue | <pre>./clew show 0024</pre>                                                | Loads the complete increment: goal, notes, tasks, and acceptance criteria.     |
+| Create a new issue  | <pre>./clew new "Short title" &lt;&lt;'EOF'<br>## Goal<br>...<br>EOF</pre> | Captures work in the repo, in plain markdown, with an allocated ID.            |
+| Label work          | <pre>./clew tag 0024 bug p0<br></pre><pre>./clew untag 0024 p0</pre>       | Keeps triage lightweight and visible to humans and agents.                     |
+| Start work          | <pre>./clew start 0024</pre>                                               | Marks ownership and makes the active increment explicit.                       |
+| Finish stable work  | <pre>./clew done 0024</pre>                                                | Archives the completed increment after tests pass and the repo is committable. |
 
 ### Self-hosting development
 

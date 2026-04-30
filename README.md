@@ -39,11 +39,19 @@ There are endless ways to manage software projects, if the below resonates, mayb
 - **Epic** — A larger body of work consisting of two or more increments that must ship together for the new functionality to work.
 - **Relay** — An ephemeral transition of context between agent sessions. Captures what doesn't live anywhere else _(discoveries, next-actions, open questions etc...)_.
 
-### Essential Commands
+### Essential Workflows for Agents
 
-_Recommend copy pasting the following chunk into your Agents.md or Claude.md_
+_Recommended agent context: copy this table into your `AGENTS.md` or `CLAUDE.md`._
 
-<insert table of essential / most common (i.e. always wanted in agent context) Clew commands here>
+| Need                | Clew command                                                      | Why it matters                                                                 |
+| ------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| See available work  | `./clew list`                                                     | Gives the canonical local backlog without reading hidden files.                |
+| Narrow the queue    | `./clew list --status todo`<br>`./clew list --tag bug`            | Lets agents pick relevant work without guessing priorities.                    |
+| Read the full issue | `./clew show 0024`                                                | Loads the complete increment: goal, notes, tasks, and acceptance criteria.     |
+| Create a new issue  | `./clew new "Short title" <<'EOF'`<br>`## Goal`<br>`...`<br>`EOF` | Captures work in the repo, in plain markdown, with an allocated ID.            |
+| Label work          | `./clew tag 0024 bug p0`<br>`./clew untag 0024 p0`                | Keeps triage lightweight and visible to humans and agents.                     |
+| Start work          | `./clew start 0024`                                               | Marks ownership and makes the active increment explicit.                       |
+| Finish stable work  | `./clew done 0024`                                                | Archives the completed increment after tests pass and the repo is committable. |
 
 ### Self-hosting development
 

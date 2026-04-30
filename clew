@@ -7,10 +7,17 @@ if [[ "$script_dir" == "${BASH_SOURCE[0]}" ]]; then
 fi
 bin="$script_dir/.clew/bin/clew"
 
-if [[ ! -x "$bin" ]]; then
-  echo "stable clew binary missing: $bin" >&2
-  echo "run: scripts/promote-clew" >&2
-  exit 1
-fi
+case "${OSTYPE:-}" in
+  msys*|cygwin*|win32*) candidates=("$bin.exe" "$bin") ;;
+  *) candidates=("$bin" "$bin.exe") ;;
+esac
 
-exec "$bin" "$@"
+for candidate in "${candidates[@]}"; do
+  if [[ -x "$candidate" ]]; then
+    exec "$candidate" "$@"
+  fi
+done
+
+echo "stable clew binary missing: ${candidates[*]}" >&2
+echo "run: scripts/promote-clew" >&2
+exit 1

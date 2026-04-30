@@ -9,28 +9,31 @@ pub struct ParsedFile {
 
 /// Parse markdown text with YAML frontmatter into an Increment + body.
 ///
-/// Expects the file to start with `---\n`. The YAML chunk between the two
-/// `---` delimiters is deserialized into an `Increment`; everything after
-/// the closing `---\n` is returned verbatim as `body`.
+/// Expects the file to start with `---` followed by LF or CRLF. The YAML chunk
+/// between the two `---` delimiters is deserialized into an `Increment`;
+/// everything after the closing delimiter is returned verbatim as `body`.
+/// CRLF is accepted in frontmatter input, but serialization normalizes
+/// frontmatter delimiters and YAML to LF. Body content remains verbatim.
 pub fn parse(text: &str) -> Result<ParsedFile, ClewError> {
-    if !text.starts_with("---\n") {
+    let (after_open, close_delimiter) = if let Some(rest) = text.strip_prefix("---\n") {
+        (rest, "\n---\n")
+    } else if let Some(rest) = text.strip_prefix("---\r\n") {
+        (rest, "\r\n---\r\n")
+    } else {
         return Err(ClewError::Frontmatter(
             "file does not start with '---'".into(),
         ));
-    }
+    };
 
-    // Strip the leading `---\n` then split on the next `---\n`.
-    let after_open = &text[4..];
     let close_pos = after_open
-        .find("\n---\n")
+        .find(close_delimiter)
         .ok_or_else(|| ClewError::Frontmatter("missing closing '---' delimiter".into()))?;
 
-    let yaml_chunk = &after_open[..close_pos];
-    // body starts after the `\n---\n` (5 chars)
-    let body = after_open[close_pos + 5..].to_string();
+    let yaml_chunk = after_open[..close_pos].replace("\r\n", "\n");
+    let body = after_open[close_pos + close_delimiter.len()..].to_string();
 
     let increment: Increment =
-        yaml_serde::from_str(yaml_chunk).map_err(|e| ClewError::Frontmatter(e.to_string()))?;
+        yaml_serde::from_str(&yaml_chunk).map_err(|e| ClewError::Frontmatter(e.to_string()))?;
 
     Ok(ParsedFile { increment, body })
 }
@@ -127,6 +130,22 @@ mixed:\n- 1\n- two\n- true\n\
         let serialized = serialize(&parsed).expect("serialize should succeed");
         let reparsed = parse(&serialized).expect("re-parse should succeed");
         assert_eq!(reparsed.body, body);
+    }
+
+    #[test]
+    fn crlf_frontmatter_parses_and_serializes_as_lf_without_touching_body() {
+        let body = "\r\n# Title\r\n\r\nBody line\r\n";
+        let input = format!(
+            "---\r\nid: 1\r\nstatus: backlog\r\ncreated_at: \"2026-04-26T10:00:00Z\"\r\nupdated_at: \"2026-04-26T10:00:00Z\"\r\n---\r\n{body}"
+        );
+
+        let parsed = parse(&input).expect("parse should succeed");
+        assert_eq!(parsed.body, body);
+
+        let serialized = serialize(&parsed).expect("serialize should succeed");
+        let serialized_frontmatter = serialized.split_once(body).unwrap().0;
+        assert!(!serialized_frontmatter.contains('\r'));
+        assert_eq!(parse(&serialized).unwrap().body, body);
     }
 
     #[test]

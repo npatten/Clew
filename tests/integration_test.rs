@@ -1140,6 +1140,31 @@ fn start_preserves_unknown_fields_and_body() {
 }
 
 #[test]
+fn start_round_trips_crlf_increment_and_preserves_body() {
+    let temp = empty_project();
+    let original_body = "\r\n# Title\r\n\r\nBody line\r\n- [ ] Task\r\n";
+    let original = format!(
+        "---\r\nid: 1\r\nstatus: todo\r\ncreated_at: 2026-04-20T10:00:00Z\r\nupdated_at: 2026-04-20T10:00:00Z\r\n---\r\n{original_body}"
+    );
+    std::fs::write(
+        temp.path().join(".clew/increments/0001-title.md"),
+        original.as_bytes(),
+    )
+    .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["start", "1"])
+        .assert()
+        .success();
+
+    let contents = read_at(&temp, ".clew/increments/0001-title.md");
+    assert!(contents.contains("status: in_progress"));
+    assert_eq!(increment_body(&contents), original_body);
+}
+
+#[test]
 fn start_bumps_updated_at() {
     let temp = empty_project();
     write_increment(

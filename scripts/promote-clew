@@ -9,8 +9,16 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 cargo build --release
 
-mkdir -p .clew/bin
-cp target/release/clew .clew/bin/clew
-chmod +x .clew/bin/clew
+if [[ -f target/release/clew.exe ]]; then
+  release_bin=target/release/clew.exe
+  promoted_bin=.clew/bin/clew.exe
+else
+  release_bin=target/release/clew
+  promoted_bin=.clew/bin/clew
+fi
 
-echo "Promoted target/release/clew to .clew/bin/clew" >&2
+mkdir -p .clew/bin
+cp "$release_bin" "$promoted_bin"
+chmod +x "$promoted_bin"
+
+echo "Promoted $release_bin to $promoted_bin" >&2

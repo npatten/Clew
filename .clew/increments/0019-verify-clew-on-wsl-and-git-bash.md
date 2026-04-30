@@ -1,13 +1,14 @@
 ---
 id: 19
-status: backlog
-tags: [windows]
+status: in_progress
+tags:
+- windows
 created_at: 2026-04-29T02:53:17Z
-updated_at: 2026-04-29T02:53:17Z
+updated_at: 2026-04-30T00:00:03Z
 ---
 # Verify Clew on WSL and Git Bash
 
-> **Status: backlog.** Concrete, near-term Windows work for the one known Windows user (who develops in Git Bash). For the larger speculative "native cmd/PowerShell" design thinking, see #0018.
+> **Status: in progress.** Concrete, near-term Windows work for the one known Windows user (who develops in Git Bash). For the larger speculative "native cmd/PowerShell" design thinking, see #0018.
 
 ## Context
 
@@ -18,6 +19,10 @@ This increment is a sanity-check pass: smoke-test the documented core loop, fix 
 ## Goal
 
 Document and verify that `./clew` and `scripts/promote-clew` work correctly under WSL2 and Git Bash on a real Windows host, with a regression test guarding the most likely Windows-shaped bug (CRLF round-trip).
+
+## Relationship to #0010
+
+This increment does not block macOS/Linux distribution in #0010. It blocks only native Windows / Git Bash release claims and whether #0010 includes `x86_64-pc-windows-msvc` artifacts. If this passes before the first public release tag, Windows artifacts may ship as experimental. If not, #0010 should document WSL and Cargo-based installation as the Windows path for now.
 
 ## Scope
 
@@ -49,7 +54,9 @@ Document and verify that `./clew` and `scripts/promote-clew` work correctly unde
 - [ ] [Human] Smoke-test the same commands under Git Bash on the Windows host
 - [ ] [Human] Run `scripts/promote-clew` under Git Bash; confirm the promoted binary executes
 - [ ] [Human] Verify archive `done` and `reopen` move files correctly on NTFS via Git Bash
-- [ ] Write a CRLF round-trip integration test (write `\r\n` increment to disk, run `clew start`, assert no parse failure and body preserved)
+- [ ] Verify `cargo install --path .` or `cargo install --git <repo>` works from Git Bash
+- [x] Audit for Windows-sensitive path, process, executable-bit, and newline assumptions
+- [x] Write a CRLF round-trip integration test (write `\r\n` increment to disk, run `clew start`, assert no parse failure and body preserved)
 - [ ] Add a "Development on Windows" section to `README.md` documenting WSL2 + Git Bash as supported, native shells as not, with a pointer to #0018
 - [ ] Update `clew-spec.md` (revisions entry + a sentence in the implementation section noting the Windows posture)
 - [ ] File follow-up increments for any concrete bugs the smoke tests surface

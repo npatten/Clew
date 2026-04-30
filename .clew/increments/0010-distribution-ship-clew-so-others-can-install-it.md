@@ -38,6 +38,18 @@ Native Windows / Git Bash distribution is gated on #0019. If #0019 passes before
 4. **Cut the first public release tag** by pushing a tag; verify the GitHub Release, the shell installer, and the brew formula all work end-to-end on a clean machine.
 5. **Document install** in the README: brew, curl, cargo — in that order.
 
+## Progress
+
+- [x] Name collision check: `cargo search clew --limit 10` returned no `clew` crate; `brew search clew` returned only `clens`.
+- [x] Added crates.io-ready package metadata; `cargo publish --dry-run --allow-dirty` verifies packaging.
+- [x] Added dist config and generated GitHub release workflow for macOS arm64, macOS x86_64, and Linux x86_64. Native Windows target remains deferred pending #0019.
+- [x] Documented intended install paths in the README, with prerelease caveats.
+- [x] Added MIT license metadata and `LICENSE`.
+- [x] Wired Homebrew publishing to `npatten/homebrew-tap`.
+- [x] Initialized the tap repo and added `HOMEBREW_TAP_TOKEN` to the Clew GitHub project.
+- [ ] Publish to crates.io with a real token.
+- [ ] Cut the first release tag and smoke-test release assets on a clean machine.
+
 ## Deferred
 
 - Native Windows targets unless #0019 passes before the first public release tag.

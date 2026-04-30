@@ -8,11 +8,11 @@ last_major_update: 2026-04-30
 
 ## Revisions
 
+- 2026-04-30 — Distribution moved from an open question to a dist-backed release path because Clew is a single-binary CLI and should have repeatable macOS/Linux artifacts before native Windows is advertised.
 - 2026-04-30 — Tag writes moved into the CLI (`clew new --tag`, `clew tag`, `clew untag`) because tags affect capture/search timing, while stdin remains body-only to avoid frontmatter merge semantics.
 - 2026-04-28 — CLI success output now treats stdout as machine-usable result data, with stderr reserved for warnings, errors, and human status chatter; this lets agents consume IDs and filepaths without extra lookup calls.
 - 2026-04-28 — self-hosting now uses a promoted local binary so `./clew` stays available while source builds are temporarily broken.
 - 2026-04-28 — `clew new` now writes a default `# Title` body when no body content is supplied, so freshly-created increments show their title in raw markdown.
-- 2026-04-28 — archive/reopen moves stay plain filesystem moves, not `git mv`; Clew must not mutate the git index, and reviewers can stage with `git add -A` to see renames.
 
 _Older entries pruned; use `git log hammock-thinking/crew-plan.md` for full history._
 
@@ -23,7 +23,7 @@ _Older entries pruned; use `git log hammock-thinking/crew-plan.md` for full hist
 - Epics / nesting increments. `[[backlinks?]]` formatting? see: [[notes-on-epics]]
 - Agent's expected workflow loop, codified into `.clew/README.md`.
 - The `.clew/README.md` template content — including the "copy this into your AGENTS.md" harness-integration section. Stub for scaffolding; iterate post-MVP.
-- Distribution: `cargo install`? curl-to-bash? homebrew? (Default to `cargo install` for v1; revisit later.)
+- Distribution follow-through: publish the crate, create/configure the Homebrew tap, and cut the first release tag.
 
 ## What is Clew
 
@@ -376,6 +376,14 @@ In this repository, the root `./clew` command is a thin launcher for `.clew/bin/
 `scripts/promote-clew` is the promotion seam. It runs the quality gate, builds the release binary, and copies it into `.clew/bin/clew` only after those steps pass. The promoted binary is ignored by git because it is local build output, not shared project state.
 
 The benefit is availability and speed for agents. The cost is staleness: `./clew` can lag behind source until an explicit promotion.
+
+### Distribution
+
+Clew ships as a system-wide single binary. Public releases are produced by `dist` on GitHub Actions for macOS arm64, macOS x86_64, and Linux x86_64, with a shell installer and a Homebrew formula. `cargo install clew` remains the Rust-user fallback once the crate is published.
+
+Native Windows artifacts are intentionally deferred until the WSL/Git Bash smoke-test increment passes. Windows users should use WSL2 for release artifacts in the meantime.
+
+The benefit is a repeatable release path with prebuilt binaries. The cost is extra release YAML/config surface and an external release tool to occasionally upgrade.
 
 ### Error model
 

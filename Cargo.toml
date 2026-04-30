@@ -2,6 +2,13 @@
 name = "clew"
 version = "0.1.0"
 edition = "2021"
+description = "A lightweight, local, git-native project tracker for humans and agents."
+license = "MIT"
+repository = "https://github.com/npatten/Clew"
+homepage = "https://github.com/npatten/Clew"
+readme = "README.md"
+keywords = ["cli", "project-management", "agents", "markdown"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 clap = { version = "4", default-features = false, features = ["derive", "std", "help", "usage"] }
@@ -27,3 +34,8 @@ path = "src/lib.rs"
 [[bin]]
 name = "clew"
 path = "src/main.rs"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"

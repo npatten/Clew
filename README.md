@@ -53,6 +53,30 @@ _Recommended agent context: copy this table into your `AGENTS.md` or `CLAUDE.md`
 | Start work          | <pre>./clew start 0024</pre>                                               | Marks ownership and makes the active increment explicit.                       |
 | Finish stable work  | <pre>./clew done 0024</pre>                                                | Archives the completed increment after tests pass and the repo is committable. |
 
+## Installation
+
+Clew's release path is being wired with `dist`. Once the first public release is cut, the supported install paths are:
+
+```bash
+# Homebrew tap (after the tap repo is created)
+brew install npatten/tap/clew
+
+# Shell installer from the latest GitHub Release
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://github.com/npatten/Clew/releases/latest/download/clew-installer.sh | sh
+
+# Rust fallback
+cargo install clew
+```
+
+Until the crate is published, install from source with:
+
+```bash
+cargo install --git https://github.com/npatten/Clew.git
+```
+
+Windows: use WSL2 for the release artifacts. Native Windows / Git Bash distribution is still experimental and is not advertised until the Windows smoke tests pass.
+
 ### Self-hosting development
 
 In this repository, `./clew` is a thin launcher for a promoted stable binary at `.clew/bin/clew`. It does not run `cargo build` on every invocation, so Clew remains available while the working tree is temporarily broken.

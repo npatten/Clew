@@ -4,6 +4,8 @@ In Greek myth, Ariadne gave Theseus the "clew" (a ball of thread) to navigate th
 
 There are endless ways to manage software projects, if the below resonates, maybe this one suits you as well.
 
+![clew logo](clew_logo.png)
+
 ### Clew is designed to:
 
 - support hobby projects or tiny teams

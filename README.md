@@ -48,24 +48,18 @@ _Recommended agent context: copy this table into your `AGENTS.md` or `CLAUDE.md`
 
 ## Installation
 
-Clew's release path is being wired with `dist`. Once the first public release is cut, the supported install paths are:
+Install Clew with Homebrew, the GitHub Release shell installer, or Cargo:
 
 ```bash
-# Homebrew tap (after the tap repo is created)
+# Homebrew
 brew install npatten/tap/clew
 
 # Shell installer from the latest GitHub Release
 curl --proto '=https' --tlsv1.2 -LsSf \
   https://github.com/npatten/Clew/releases/latest/download/clew-installer.sh | sh
 
-# Rust fallback
+# Cargo
 cargo install clew
-```
-
-Until the crate is published, install from source with:
-
-```bash
-cargo install --git https://github.com/npatten/Clew.git
 ```
 
 Windows: use WSL2 for the release artifacts. Native Windows / Git Bash distribution is still experimental and is not advertised until the Windows smoke tests pass.

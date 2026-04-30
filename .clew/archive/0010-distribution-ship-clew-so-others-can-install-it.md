@@ -1,11 +1,11 @@
 ---
 id: 10
-status: in_progress
+status: done
 tags:
 - windows
 - ready-for-human
 created_at: 2026-04-28T03:20:05Z
-updated_at: 2026-04-30T03:32:54Z
+updated_at: 2026-04-30T18:44:22Z
 title: 'distribution: ship clew so others can install it'
 ---
 Stand up a real distribution story so developers outside this repo can install and use Clew on macOS, Linux, and (eventually) Windows.
@@ -48,7 +48,9 @@ Native Windows / Git Bash distribution is gated on #0019. If #0019 passes before
 - [x] Wired Homebrew publishing to `npatten/homebrew-tap`.
 - [x] Initialized the tap repo and added `HOMEBREW_TAP_TOKEN` to the Clew GitHub project.
 - [x] Published `clew` v0.1.0 to crates.io.
-- [ ] Cut the first release tag and smoke-test release assets on a clean machine.
+- [x] Cut `v0.1.0`; GitHub Actions published release assets and Homebrew formula.
+- [x] Smoke-tested Homebrew install: `brew install clew` installed `clew 0.1.0` and `clew --version` returned `clew 0.1.0`.
+- [x] Smoke-tested the GitHub shell installer into a temporary `CARGO_HOME`; it installed `clew 0.1.0` for `aarch64-apple-darwin`.
 
 ## Deferred
 

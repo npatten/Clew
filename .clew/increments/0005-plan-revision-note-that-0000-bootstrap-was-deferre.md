@@ -1,8 +1,10 @@
 ---
 id: 5
 status: backlog
+tags:
+- ready-for-human
 created_at: 2026-04-28T00:44:43Z
-updated_at: 2026-04-28T00:44:43Z
+updated_at: 2026-04-30T03:32:54Z
 ---
 
 # Plan revision: note that `#0000` bootstrap was deferred for self-host

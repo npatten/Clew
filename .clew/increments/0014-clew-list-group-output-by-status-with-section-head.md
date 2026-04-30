@@ -1,8 +1,10 @@
 ---
 id: 14
 status: backlog
+tags:
+- ready-for-agent
 created_at: 2026-04-28T04:13:51Z
-updated_at: 2026-04-28T04:13:51Z
+updated_at: 2026-04-30T03:32:54Z
 ---
 ## Goal
 

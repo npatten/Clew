@@ -56,3 +56,9 @@ scripts/promote-clew
 ```
 
 That script runs `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`, builds the release binary, and copies it to `.clew/bin/clew`. The promoted binary is local-only and ignored by git.
+
+## Agent Use Highlights
+
+```bash
+for id in 0002 0003 0005 0008 0010 0012 0014 0018 0019 0021 0022 0023 0024 0025 0026 0027; do echo "--- $id ---"; ./clew show $id; done
+```

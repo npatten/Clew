@@ -1,8 +1,10 @@
 ---
 id: 27
 status: backlog
+tags:
+- needs-triage
 created_at: 2026-04-30T02:30:12Z
-updated_at: 2026-04-30T02:30:12Z
+updated_at: 2026-04-30T03:32:54Z
 ---
 ## Goal
 Extract pure lint evaluation over loaded Increment and Path facts.

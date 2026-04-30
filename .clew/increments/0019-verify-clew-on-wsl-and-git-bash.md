@@ -3,8 +3,9 @@ id: 19
 status: in_progress
 tags:
 - windows
+- ready-for-human
 created_at: 2026-04-29T02:53:17Z
-updated_at: 2026-04-30T00:00:03Z
+updated_at: 2026-04-30T03:32:54Z
 ---
 # Verify Clew on WSL and Git Bash
 

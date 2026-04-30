@@ -1,8 +1,10 @@
 ---
 id: 22
 status: backlog
+tags:
+- ready-for-agent
 created_at: 2026-04-30T02:08:41Z
-updated_at: 2026-04-30T02:08:41Z
+updated_at: 2026-04-30T03:32:54Z
 ---
 ## Context
 

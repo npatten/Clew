@@ -1,8 +1,10 @@
 ---
 id: 2
 status: backlog
+tags:
+- needs-info
 created_at: 2026-04-28T00:44:22Z
-updated_at: 2026-04-28T00:44:22Z
+updated_at: 2026-04-30T03:32:54Z
 ---
 
 # `path.md` in-progress section

@@ -1,8 +1,10 @@
 ---
 id: 25
 status: backlog
+tags:
+- needs-triage
 created_at: 2026-04-30T02:30:12Z
-updated_at: 2026-04-30T02:30:12Z
+updated_at: 2026-04-30T03:32:54Z
 ---
 ## Goal
 Give Path maintenance a deeper module that owns removal and canonical-reference normalization policy.

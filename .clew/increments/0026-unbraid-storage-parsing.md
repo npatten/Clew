@@ -1,8 +1,10 @@
 ---
 id: 26
 status: backlog
+tags:
+- needs-triage
 created_at: 2026-04-30T02:30:12Z
-updated_at: 2026-04-30T02:30:12Z
+updated_at: 2026-04-30T03:32:54Z
 ---
 ## Goal
 Keep storage focused on filesystem facts and move parse-all behaviour to a domain/read module.

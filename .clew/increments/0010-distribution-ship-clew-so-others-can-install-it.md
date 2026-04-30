@@ -3,8 +3,9 @@ id: 10
 status: in_progress
 tags:
 - windows
+- ready-for-human
 created_at: 2026-04-28T03:20:05Z
-updated_at: 2026-04-30T00:00:03Z
+updated_at: 2026-04-30T03:32:54Z
 title: 'distribution: ship clew so others can install it'
 ---
 Stand up a real distribution story so developers outside this repo can install and use Clew on macOS, Linux, and (eventually) Windows.

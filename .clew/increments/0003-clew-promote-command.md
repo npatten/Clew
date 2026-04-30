@@ -1,8 +1,10 @@
 ---
 id: 3
 status: backlog
+tags:
+- needs-info
 created_at: 2026-04-28T00:44:23Z
-updated_at: 2026-04-28T00:44:23Z
+updated_at: 2026-04-30T03:32:54Z
 ---
 
 # `clew promote` command

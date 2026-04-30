@@ -47,7 +47,7 @@ Native Windows / Git Bash distribution is gated on #0019. If #0019 passes before
 - [x] Added MIT license metadata and `LICENSE`.
 - [x] Wired Homebrew publishing to `npatten/homebrew-tap`.
 - [x] Initialized the tap repo and added `HOMEBREW_TAP_TOKEN` to the Clew GitHub project.
-- [ ] Publish to crates.io with a real token.
+- [x] Published `clew` v0.1.0 to crates.io.
 - [ ] Cut the first release tag and smoke-test release assets on a clean machine.
 
 ## Deferred

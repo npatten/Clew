@@ -125,6 +125,8 @@ Use dedicated tag commands for existing increments:
    cargo build --release
    ```
 
+   _(often takes 200+ seconds to best to set a 400s timeout when running tests / quality gates)_
+
 - Failures are stop-the-line. Fix the root cause; no `#[allow(...)]`, `--no-verify`, or reformat-then-ignore without explicit user approval.
 - Re-run after every fix until the promotion script passes in a single sweep.
 - If `cargo` is unavailable, say so explicitly rather than silently skipping.

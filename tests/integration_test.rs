@@ -43,8 +43,8 @@ fn new_help_documents_arguments_and_flags() {
 // `clew init`
 // ---------------------------------------------------------------------------
 
-const INIT_CREATED_STDERR: &str = "created: .clew\ncreated: .clew/increments\ncreated: .clew/archive\ncreated: .clew/path.md\ncreated: .clew/README.md\n";
-const INIT_EXISTS_STDERR: &str = "exists: .clew\nexists: .clew/increments\nexists: .clew/archive\nexists: .clew/path.md\nexists: .clew/README.md\n";
+const INIT_CREATED_STDERR: &str = "created: .clew\ncreated: .clew/increments\ncreated: .clew/archive\ncreated: .clew/path.md\ncreated: .clew/README.md\ncreated: .clew/increments/0000-bootstrap-clew.md\n";
+const INIT_EXISTS_STDERR: &str = "exists: .clew\nexists: .clew/increments\nexists: .clew/archive\nexists: .clew/path.md\nexists: .clew/README.md\nexists: .clew/increments/0000-bootstrap-clew.md\n";
 
 #[test]
 fn init_creates_expected_layout() {
@@ -68,6 +68,15 @@ fn init_creates_expected_layout() {
         .assert(predicates::path::is_file());
     temp.child(".clew/README.md")
         .assert(predicates::path::is_file());
+    temp.child(".clew/increments/0000-bootstrap-clew.md")
+        .assert(predicates::path::is_file());
+    let bootstrap =
+        std::fs::read_to_string(temp.path().join(".clew/increments/0000-bootstrap-clew.md"))
+            .unwrap();
+    assert!(bootstrap.contains("id: 0"));
+    assert!(bootstrap.contains("status: todo"));
+    assert!(bootstrap.contains("# Bootstrap Clew"));
+    assert!(bootstrap.contains("persistent agent instruction artifact"));
     assert_eq!(
         std::fs::read_to_string(temp.path().join(".clew/path.md")).unwrap(),
         ""
@@ -89,6 +98,9 @@ fn init_rerun_reports_existing_and_does_not_overwrite() {
     temp.child(".clew/README.md")
         .write_str("keep readme\n")
         .unwrap();
+    temp.child(".clew/increments/0000-bootstrap-clew.md")
+        .write_str("keep bootstrap\n")
+        .unwrap();
 
     Command::cargo_bin("clew")
         .unwrap()
@@ -106,6 +118,11 @@ fn init_rerun_reports_existing_and_does_not_overwrite() {
     assert_eq!(
         std::fs::read_to_string(temp.path().join(".clew/README.md")).unwrap(),
         "keep readme\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join(".clew/increments/0000-bootstrap-clew.md"))
+            .unwrap(),
+        "keep bootstrap\n"
     );
 }
 
@@ -130,7 +147,7 @@ fn init_repairs_partial_state_without_touching_existing_files() {
         .assert()
         .success()
         .stdout("")
-        .stderr("exists: .clew\nexists: .clew/increments\ncreated: .clew/archive\nexists: .clew/path.md\nexists: .clew/README.md\n");
+        .stderr("exists: .clew\nexists: .clew/increments\ncreated: .clew/archive\nexists: .clew/path.md\nexists: .clew/README.md\nexists: .clew/increments/0000-bootstrap-clew.md\n");
 
     temp.child(".clew/archive")
         .assert(predicates::path::is_dir());
@@ -138,6 +155,62 @@ fn init_repairs_partial_state_without_touching_existing_files() {
         std::fs::read_to_string(temp.path().join(".clew/path.md")).unwrap(),
         "keep path\n"
     );
+}
+
+#[test]
+fn init_adds_bootstrap_when_increments_dir_is_empty() {
+    let temp = assert_fs::TempDir::new().unwrap();
+    temp.child(".clew/increments").create_dir_all().unwrap();
+    temp.child(".clew/archive").create_dir_all().unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("init")
+        .assert()
+        .success()
+        .stderr("exists: .clew\nexists: .clew/increments\nexists: .clew/archive\ncreated: .clew/path.md\ncreated: .clew/README.md\ncreated: .clew/increments/0000-bootstrap-clew.md\n");
+}
+
+#[test]
+fn init_does_not_backfill_bootstrap_when_increments_exist() {
+    let temp = assert_fs::TempDir::new().unwrap();
+    temp.child(".clew/increments").create_dir_all().unwrap();
+    temp.child(".clew/archive").create_dir_all().unwrap();
+    temp.child(".clew/increments/0001-existing.md")
+        .write_str(FIXTURE)
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("init")
+        .assert()
+        .success()
+        .stderr("exists: .clew\nexists: .clew/increments\nexists: .clew/archive\ncreated: .clew/path.md\ncreated: .clew/README.md\n");
+
+    temp.child(".clew/increments/0000-bootstrap-clew.md")
+        .assert(predicates::path::missing());
+}
+
+#[test]
+fn init_then_new_allocates_first_real_increment_as_one() {
+    let temp = assert_fs::TempDir::new().unwrap();
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("init")
+        .assert()
+        .success();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "First real work"])
+        .write_stdin("")
+        .assert()
+        .success()
+        .stdout("#0001 .clew/increments/0001-first-real-work.md\n");
 }
 
 #[test]
@@ -152,6 +225,22 @@ fn init_readme_matches_snapshot() {
 
     let readme = std::fs::read_to_string(temp.path().join(".clew/README.md")).unwrap();
     insta::assert_snapshot!(readme);
+}
+
+#[test]
+fn init_bootstrap_increment_body_matches_snapshot() {
+    let temp = assert_fs::TempDir::new().unwrap();
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("init")
+        .assert()
+        .success();
+
+    let bootstrap =
+        std::fs::read_to_string(temp.path().join(".clew/increments/0000-bootstrap-clew.md"))
+            .unwrap();
+    insta::assert_snapshot!(increment_body(&bootstrap));
 }
 
 const FIXTURE: &str = "---\nid: 42\nstatus: in_progress\ncreated_at: 2026-04-20T10:00:00Z\nupdated_at: 2026-04-25T14:30:00Z\n---\n\n# Add OAuth routes\n\n- [x] Scaffold handlers\n- [ ] Write tests\n";

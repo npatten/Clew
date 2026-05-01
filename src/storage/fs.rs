@@ -1,5 +1,8 @@
 use crate::core::frontmatter::{self, ParsedFile};
+use crate::core::increment::{Increment, Status};
 use crate::error::ClewError;
+use chrono::{SecondsFormat, Utc};
+use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
@@ -40,7 +43,7 @@ pub fn init(root: &Path) -> Result<InitReport, ClewError> {
         ),
     ];
 
-    let mut items = Vec::with_capacity(specs.len());
+    let mut items = Vec::with_capacity(specs.len() + 1);
     for spec in specs {
         let relative = spec.path();
         let path = root.join(relative);
@@ -54,7 +57,58 @@ pub fn init(root: &Path) -> Result<InitReport, ClewError> {
         });
     }
 
+    let bootstrap = bootstrap_increment_init_action(root)?;
+    if let Some(action) = bootstrap {
+        items.push(InitItem {
+            path: ".clew/increments/0000-bootstrap-clew.md",
+            action,
+        });
+    }
+
     Ok(InitReport { items })
+}
+
+fn bootstrap_increment_init_action(root: &Path) -> Result<Option<InitAction>, ClewError> {
+    let relative = ".clew/increments/0000-bootstrap-clew.md";
+    let path = root.join(relative);
+    if path.exists() {
+        return Ok(Some(InitAction::Exists));
+    }
+
+    let increments = root.join(CLEW_DIR).join(INCREMENTS_SUBDIR);
+    let mut entries = std::fs::read_dir(&increments).map_err(ClewError::Io)?;
+    if entries.next().transpose().map_err(ClewError::Io)?.is_some() {
+        return Ok(None);
+    }
+
+    let contents = bootstrap_increment_contents()?;
+    create_file_if_missing(&path, &contents).map(Some)
+}
+
+fn bootstrap_increment_contents() -> Result<String, ClewError> {
+    // Truncate to whole-second precision to match the frontmatter format
+    // contract (RFC 3339 UTC, no subseconds).
+    let now = Utc::now()
+        .to_rfc3339_opts(SecondsFormat::Secs, true)
+        .parse()
+        .expect("RFC 3339 round-trip");
+
+    let increment = Increment {
+        id: 0,
+        status: Status::Todo,
+        parent: None,
+        blocked_reason: None,
+        abandoned_reason: None,
+        tags: Vec::new(),
+        created_at: now,
+        updated_at: now,
+        extra: BTreeMap::new(),
+    };
+
+    frontmatter::serialize(&ParsedFile {
+        increment,
+        body: include_str!("../templates/bootstrap_increment.md").to_string(),
+    })
 }
 
 fn create_dir_if_missing(path: &Path) -> Result<InitAction, ClewError> {

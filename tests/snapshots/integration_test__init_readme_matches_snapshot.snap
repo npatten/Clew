@@ -1,11 +1,52 @@
 ---
 source: tests/integration_test.rs
-assertion_line: 154
+assertion_line: 227
 expression: readme
 ---
 # Clew — Project State
 
 This directory holds Clew project state (increments, archive, path).
+
+## Agent contract
+
+Copy this contract into the persistent instruction artifact your coding harness reads (`AGENTS.md`, `CLAUDE.md`, Cursor rules, Codex instructions, a skill, or equivalent):
+
+```markdown
+## Clew workflow
+
+### Core concepts
+
+- **Increment** — a standalone unit of work that should leave the codebase stable, tested, and committable when complete.
+- **Task** — a Markdown checkbox inside an Increment.
+- **Path** — the hand-curated priority order across active Increments, stored in `.clew/path.md`.
+- **Archive** — completed or abandoned Increments moved to `.clew/archive/`.
+- **Tag** — lightweight frontmatter classification for filtering, such as `bug`, `docs`, or `p0`.
+
+### Use Clew to track work in this project
+
+- Run `clew list` to see all active increments. It excludes archived and abandoned work.
+- If given an ID, run `clew show <id>` before starting implementation to get the full increment body via stdout.
+- Run `clew start <id>` before starting work.
+- Keep discoveries, decisions, and remaining tasks in the Increment markdown.
+- Do not run `clew done <id>` until the code is stable and project checks pass.
+- When complete, run `clew done <id>` and commit the code changes with the `.clew/` changes.
+- Create new work with `clew new "Short title"`; pass a Markdown body on stdin for detailed Increments.
+```
+
+## Common commands
+
+| Need                | Command                            |
+| ------------------- | ---------------------------------- |
+| See active work     | `clew list`                        |
+| Filter by status    | `clew list --status todo`          |
+| Filter by tag       | `clew list --tag bug`              |
+| Read an Increment   | `clew show 0024`                   |
+| Create an Increment | `clew new "Short title"`           |
+| Create with body    | `clew new "Short title" < body.md` |
+| Add tags            | `clew tag 0024 bug p0`             |
+| Remove tags         | `clew untag 0024 p0`               |
+| Start work          | `clew start 0024`                  |
+| Finish work         | `clew done 0024`                   |
 
 ## Creating increments
 

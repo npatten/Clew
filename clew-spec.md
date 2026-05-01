@@ -8,11 +8,11 @@ last_major_update: 2026-04-30
 
 ## Revisions
 
+- 2026-04-30 — First-agent onboarding is now part of init because Clew only becomes useful to agents after users copy the generated agent contract into their persistent agent instructions.
 - 2026-04-30 — Distribution moved from an open question to a dist-backed release path because Clew is a single-binary CLI and should have repeatable macOS/Linux artifacts before native Windows is advertised.
 - 2026-04-30 — Tag writes moved into the CLI (`clew new --tag`, `clew tag`, `clew untag`) because tags affect capture/search timing, while stdin remains body-only to avoid frontmatter merge semantics.
 - 2026-04-28 — CLI success output now treats stdout as machine-usable result data, with stderr reserved for warnings, errors, and human status chatter; this lets agents consume IDs and filepaths without extra lookup calls.
 - 2026-04-28 — self-hosting now uses a promoted local binary so `./clew` stays available while source builds are temporarily broken.
-- 2026-04-28 — `clew new` now writes a default `# Title` body when no body content is supplied, so freshly-created increments show their title in raw markdown.
 
 _Older entries pruned; use `git log hammock-thinking/crew-plan.md` for full history._
 
@@ -21,9 +21,6 @@ _Older entries pruned; use `git log hammock-thinking/crew-plan.md` for full hist
 - Full CLI surface: flags, output formats — refine as commands are implemented.
   - list design still has open questions around output shape and additional filters.
 - Epics / nesting increments. `[[backlinks?]]` formatting? see: [[notes-on-epics]]
-- Agent's expected workflow loop, codified into `.clew/README.md`.
-- The `.clew/README.md` template content — including the "copy this into your AGENTS.md" harness-integration section. Stub for scaffolding; iterate post-MVP.
-- Distribution follow-through: publish the crate, create/configure the Homebrew tap, and cut the first release tag.
 
 ## What is Clew
 
@@ -339,11 +336,19 @@ A typical agent session:
 
 Cross-session context lives inside the active increment file (decisions, gotchas, discoveries). A separate session-handoff artifact (`relay.md` + `clew relay`) was prototyped and pulled — see #0015 for the parked design if we ever revive it.
 
+### First-agent onboarding
+
+`clew init` creates a generated `.clew/README.md` whose primary job is to make the repository usable by coding agents. It includes a clearly marked, copy-pasteable agent contract for the user to add to whatever persistent instruction artifact their harness reads: `AGENTS.md`, `CLAUDE.md`, Cursor rules, Codex instructions, a skill, or an equivalent system/project-level file.
+
+`clew init` also creates `#0000-bootstrap-clew`, a real setup Increment that tells the user to wire that agent contract into their chosen instruction surface, commit `.clew/`, and then mark the bootstrap done. The bootstrap reserves `#0000`, so the first normal user-created Increment is `#0001`.
+
+User-facing docs and generated docs assume Clew is installed and invoked as `clew`. This repository's `./clew` runner is only a self-hosting development convenience, not a product workflow.
+
 ---
 
 ## CLI sketch
 
-- `clew init` — scaffold `.clew/` in the current directory: creates `increments/`, `archive/`, empty `path.md`, and a templated `README.md`. Also creates `#0000-bootstrap-clew` as a real setup task (instructs the user to copy the harness-integration section from `.clew/README.md` into their `AGENTS.md` / `CLAUDE.md`, then run `clew done 0000`). The bootstrap takes `#0000` so the user's first real increment is `#0001`.
+- `clew init` — scaffold `.clew/` in the current directory: creates `increments/`, `archive/`, empty `path.md`, and a templated `README.md`. Also creates `#0000-bootstrap-clew` as a real setup task. Init is idempotent and does not overwrite existing project state.
 - `clew new "<title>" [--tag X ...]` — creates in `backlog` (or `todo` with `--ready`) with a default `# <title>` body. Optional `--parent <id>` flag links to a parent increment. Repeated singular `--tag <tag>` attaches one or more tags; no CSV form. If stdin is non-TTY and contains body content, reads it verbatim as the increment body instead; stdin is body-only, and leading frontmatter delimiters are rejected.
 - `clew show <id>` — accepts numeric ID or slug. Default output: raw markdown (frontmatter + body) to stdout. In an interactive TTY, opens the file in the configured editor instead. `--json` optional for structured output.
 - `clew list [--tag X] [--status Y] [-a|--all]` — filtered listing.
@@ -371,7 +376,7 @@ Cross-session context lives inside the active increment file (decisions, gotchas
 
 ### Self-hosting runner
 
-In this repository, the root `./clew` command is a thin launcher for `.clew/bin/clew`, a promoted known-good binary. It intentionally does not rebuild on every invocation; project management must remain available while in-progress source edits temporarily break `cargo build`.
+In this repository, the root `./clew` command is a thin launcher for `.clew/bin/clew`, a promoted known-good binary. It intentionally does not rebuild on every invocation; project management must remain available while in-progress source edits temporarily break `cargo build`. This is repo-local development infrastructure; installed users should invoke `clew` directly.
 
 `scripts/promote-clew` is the promotion seam. It runs the quality gate, builds the release binary, and copies it into `.clew/bin/clew` only after those steps pass. The promoted binary is ignored by git because it is local build output, not shared project state.
 

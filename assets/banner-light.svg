@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 280" preserveAspectRatio="xMidYMid meet" role="img" aria-label="clew — find your way">
+  <text x="490" y="160" font-family="&#39;JetBrains Mono&#39;,&#39;SF Mono&#39;,Menlo,Consolas,monospace" font-size="140" font-weight="500" fill="#1A1714" letter-spacing="-5">clew</text>
+
+  <text x="494" y="210" font-family="&#39;JetBrains Mono&#39;,&#39;SF Mono&#39;,Menlo,monospace" font-size="22" fill="#6B6359" letter-spacing="2.5">find your way</text>
+
+  <g stroke="#1A1714" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none" transform="translate(60, 60)">
+    <ellipse cx="80" cy="40" rx="50" ry="11"></ellipse>
+    <path d="M30 40 V120"></path>
+    <path d="M130 40 V120"></path>
+    <path d="M30 120 Q80 134 130 120"></path>
+    <path d="M30 120 Q80 106 130 120"></path>
+    <path d="M38 60 Q80 66 122 60" opacity="0.55"></path>
+    <path d="M38 80 Q80 86 122 80" opacity="0.55"></path>
+    <path d="M38 100 Q80 106 122 100" opacity="0.55"></path>
+    <ellipse cx="80" cy="40" rx="7" ry="2.5"></ellipse>
+  </g>
+
+  <g stroke="#B8482E" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M140 100 C 138 82, 154 76, 152 64 C 150 54, 132 58, 140 70"></path>
+    <path d="M190 160 C 250 160, 260 200, 320 200 L 380 200 L 380 175 L 430 175 L 430 200 L 480 200 L 480 175 L 530 175 L 580 175 C 660 175, 700 175, 760 175 C 820 175, 820 175, 870 175 L 970 175 L 970 70"></path>
+    <path d="M950 90 L 970 64 L 990 90"></path>
+  </g>
+</svg>

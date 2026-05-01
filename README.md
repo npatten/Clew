@@ -5,7 +5,7 @@
 
 # Clew
 
-In Greek myth, Ariadne gave Theseus a clew — a ball of thread — to navigate the labyrinth and find the way back out. Clew does the same for small software projects: it keeps local, git-native work state that humans and coding agents can both follow.
+In Greek myth, Ariadne gave Theseus a clew (a ball of thread) to navigate the labyrinth and find the way back out. Clew does the same for small software projects: it keeps local, git-native work state that humans and coding agents can both follow.
 
 There are endless ways to manage software projects, if the below resonates, maybe this one suits you as well.
 

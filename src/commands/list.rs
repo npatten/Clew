@@ -1,6 +1,7 @@
-use crate::core::increment::Status;
+use crate::core::{increment::Status, path};
 use crate::error::ClewError;
 use crate::storage::fs;
+use std::collections::BTreeMap;
 use std::io::Write;
 
 pub fn run(tag: Option<&str>, status: Option<&str>, all: bool) -> Result<(), ClewError> {
@@ -11,6 +12,20 @@ pub fn run(tag: Option<&str>, status: Option<&str>, all: bool) -> Result<(), Cle
 
     let mut loaded = fs::scan_with_frontmatter(&root)?;
     loaded.sort_by_key(|e| e.entry.id);
+    if !all {
+        let path_order = path::references(&fs::read_path_md(&root)?);
+        let ranks: BTreeMap<u32, usize> = path_order
+            .into_iter()
+            .enumerate()
+            .map(|(rank, id)| (id, rank))
+            .collect();
+        loaded.sort_by_key(|e| {
+            (
+                ranks.get(&e.entry.id).copied().unwrap_or(usize::MAX),
+                e.entry.id,
+            )
+        });
+    }
 
     let stdout = std::io::stdout();
     let mut handle = stdout.lock();
@@ -34,8 +49,10 @@ pub fn run(tag: Option<&str>, status: Option<&str>, all: bool) -> Result<(), Cle
         }
         writeln!(
             handle,
-            "{:04} {} {}",
-            item.entry.id, item.parsed.increment.status, item.entry.slug
+            "{:04} {:<11} {}",
+            item.entry.id,
+            item.parsed.increment.status.to_string(),
+            item.entry.slug
         )
         .map_err(ClewError::Io)?;
     }

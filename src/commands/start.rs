@@ -13,17 +13,25 @@ pub fn run(query: &str) -> Result<(), ClewError> {
 }
 
 pub fn start(root: &Path, query: &str) -> Result<AppliedTransition, ClewError> {
+    // Idempotent: an already-`in_progress` increment is a self-loop, not an
+    // error. Lets `clew next --start` and direct `clew start` calls converge
+    // on the same return value when the work is already in flight.
     let transition = crate::commands::transition::apply(
         root,
         query,
         &[Status::Backlog, Status::Todo],
         Status::InProgress,
-        false,
+        true,
     )?;
 
     let stderr = std::io::stderr();
     let mut handle = stderr.lock();
-    writeln!(handle, "Started #{:04}", transition.id).map_err(ClewError::Io)?;
+    if transition.self_loop {
+        writeln!(handle, "warning: #{:04} already in progress", transition.id)
+            .map_err(ClewError::Io)?;
+    } else {
+        writeln!(handle, "Started #{:04}", transition.id).map_err(ClewError::Io)?;
+    }
     if let Some(reason) = &transition.blocked_reason {
         writeln!(
             handle,

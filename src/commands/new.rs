@@ -1,6 +1,6 @@
 use crate::core::frontmatter::{self, ParsedFile};
 use crate::core::increment::{Increment, Status};
-use crate::core::{slug, tag};
+use crate::core::{path as path_md, slug, tag};
 use crate::error::ClewError;
 use crate::storage::fs;
 use chrono::{SecondsFormat, Utc};
@@ -75,6 +75,16 @@ pub fn run(
 
     let filename = format!("{:04}-{}.md", next_id, new_slug);
     let path = fs::write_new_increment(&root, &filename, &contents)?;
+
+    let ranked_path = fs::read_path_md(&root)?;
+    let ranked_path = path_md::append_if_ranked(&ranked_path, next_id, &new_slug);
+    let mut slugs_by_id = entries
+        .into_iter()
+        .map(|entry| (entry.id, entry.slug))
+        .collect::<BTreeMap<_, _>>();
+    slugs_by_id.insert(next_id, new_slug);
+    let ranked_path = path_md::normalize(&ranked_path, &slugs_by_id);
+    fs::write_path_md(&root, &ranked_path)?;
 
     crate::commands::print_result_line(&root, next_id, &path)?;
     Ok(())

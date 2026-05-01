@@ -427,6 +427,91 @@ fn new_creates_backlog_increment_with_padded_id() {
 }
 
 #[test]
+fn new_appends_to_path_when_path_is_ranked() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-existing.md",
+        &fixture_with(1, "existing", "backlog", None),
+    );
+    temp.child(".clew/path.md")
+        .write_str("0001 existing\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "New work"])
+        .write_stdin("")
+        .assert()
+        .success()
+        .stdout("#0002 .clew/increments/0002-new-work.md\n");
+
+    assert_eq!(
+        read_at(&temp, ".clew/path.md"),
+        "0001 existing\n0002 new-work\n"
+    );
+    assert!(temp
+        .path()
+        .join(".clew/increments/0002-new-work.md")
+        .exists());
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["list"])
+        .assert()
+        .success()
+        .stdout("0001 backlog     existing\n0002 backlog     new-work\n");
+}
+
+#[test]
+fn new_appends_when_path_was_seeded_from_list_output() {
+    // `clew list`'s 3-column output is pasteable into path.md; the next
+    // mutating command normalizes it back to canonical 2-column form.
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-existing.md",
+        &fixture_with(1, "existing", "backlog", None),
+    );
+    temp.child(".clew/path.md")
+        .write_str("0001 backlog     existing\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "New work"])
+        .write_stdin("")
+        .assert()
+        .success();
+
+    assert_eq!(
+        read_at(&temp, ".clew/path.md"),
+        "0001 existing\n0002 new-work\n"
+    );
+}
+
+#[test]
+fn new_leaves_unranked_path_empty() {
+    let temp = empty_project();
+    temp.child(".clew/path.md").write_str("# Path\n\n").unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["new", "New work"])
+        .write_stdin("")
+        .assert()
+        .success();
+
+    assert_eq!(read_at(&temp, ".clew/path.md"), "# Path\n\n");
+}
+
+#[test]
 fn new_reads_piped_stdin_body_verbatim() {
     let temp = empty_project();
     let stdin = "## Context\nbody line\n";
@@ -956,11 +1041,11 @@ fn list_finds_tags_from_new_and_tag_commands() {
         .args(["list", "--tag", "windows"])
         .assert()
         .success()
-        .stdout("0001 backlog first\n0002 backlog second\n");
+        .stdout("0001 backlog     first\n0002 backlog     second\n");
 }
 
 #[test]
-fn list_default_shows_in_flight_only_sorted_by_id() {
+fn list_default_shows_in_flight_only_sorted_by_id_when_path_is_empty() {
     let temp = empty_project();
     write_increment(
         &temp,
@@ -987,7 +1072,41 @@ fn list_default_shows_in_flight_only_sorted_by_id() {
         .args(["list"])
         .assert()
         .success()
-        .stdout("0001 backlog first\n0002 todo second\n");
+        .stdout("0001 backlog     first\n0002 todo        second\n");
+}
+
+#[test]
+fn list_default_uses_path_rank_before_unlisted_items() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-first.md",
+        &fixture_with(1, "first", "backlog", None),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0002-second.md",
+        &fixture_with(2, "second", "todo", None),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0003-current.md",
+        &fixture_with(3, "current", "in_progress", None),
+    );
+    temp.child(".clew/path.md")
+        .write_str("0003 current\n0001 first\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["list"])
+        .assert()
+        .success()
+        .stdout("0003 in_progress current\n0001 backlog     first\n0002 todo        second\n");
 }
 
 #[test]
@@ -1018,7 +1137,7 @@ fn list_default_excludes_terminal_statuses_even_if_unarchived() {
         .args(["list"])
         .assert()
         .success()
-        .stdout("0001 todo active\n");
+        .stdout("0001 todo        active\n");
 }
 
 #[test]
@@ -1049,7 +1168,7 @@ fn list_all_includes_archived_and_terminal_statuses() {
         .args(["list", "--all"])
         .assert()
         .success()
-        .stdout("0001 todo active\n0002 done done-but-not-archived\n0003 done shipped\n");
+        .stdout("0001 todo        active\n0002 done        done-but-not-archived\n0003 done        shipped\n");
 }
 
 #[test]
@@ -1068,7 +1187,7 @@ fn list_short_all_matches_long_all() {
         &fixture_with(2, "shipped", "done", None),
     );
 
-    let expected = "0001 todo active\n0002 done shipped\n";
+    let expected = "0001 todo        active\n0002 done        shipped\n";
     for flag in ["-a", "--all"] {
         Command::cargo_bin("clew")
             .unwrap()
@@ -1108,7 +1227,7 @@ fn list_filters_by_status() {
         .args(["list", "--status", "todo"])
         .assert()
         .success()
-        .stdout("0001 todo a\n0003 todo c\n");
+        .stdout("0001 todo        a\n0003 todo        c\n");
 }
 
 #[test]
@@ -1139,7 +1258,7 @@ fn list_filters_by_tag() {
         .args(["list", "--tag", "auth"])
         .assert()
         .success()
-        .stdout("0001 todo a\n0003 todo c\n");
+        .stdout("0001 todo        a\n0003 todo        c\n");
 }
 
 #[test]
@@ -1170,7 +1289,7 @@ fn list_combines_tag_and_status_filters() {
         .args(["list", "--tag", "auth", "--status", "todo"])
         .assert()
         .success()
-        .stdout("0001 todo a\n");
+        .stdout("0001 todo        a\n");
 }
 
 #[test]
@@ -1237,7 +1356,7 @@ fn list_walks_up_to_find_clew_root() {
         .args(["list"])
         .assert()
         .success()
-        .stdout("0001 todo x\n");
+        .stdout("0001 todo        x\n");
 }
 
 #[test]
@@ -1324,7 +1443,10 @@ fn start_accepts_slug() {
 }
 
 #[test]
-fn start_in_progress_again_is_invalid_transition() {
+fn start_in_progress_again_is_idempotent_warning() {
+    // `clew start` on an already-in-progress increment is a self-loop, not
+    // an error — lets `clew next --start` and direct `clew start` calls
+    // converge on the same return value when work is already in flight.
     let temp = empty_project();
     write_increment(
         &temp,
@@ -1338,10 +1460,13 @@ fn start_in_progress_again_is_invalid_transition() {
         .current_dir(temp.path())
         .args(["start", "1"])
         .assert()
-        .failure()
-        .code(1)
-        .stderr(contains("invalid status transition"))
-        .stderr(contains("in_progress"));
+        .success()
+        .stdout("#0001 .clew/increments/0001-a.md\n")
+        .stderr(contains("warning: #0001 already in progress"));
+
+    // updated_at should not move on a self-loop.
+    let body = read_at(&temp, ".clew/increments/0001-a.md");
+    assert!(body.contains("updated_at: 2026-04-20T10:00:00Z"));
 }
 
 #[test]
@@ -1756,7 +1881,7 @@ fn done_removes_increment_from_path_md() {
         &fixture_with(2, "b", "todo", None),
     );
     temp.child(".clew/path.md")
-        .write_str("# Path\n\n- #0001-a\n- #0002-old-b // note\n")
+        .write_str("0001 a\n0002 old-b // note\n")
         .unwrap();
 
     Command::cargo_bin("clew")
@@ -1766,10 +1891,7 @@ fn done_removes_increment_from_path_md() {
         .assert()
         .success();
 
-    assert_eq!(
-        read_at(&temp, ".clew/path.md"),
-        "# Path\n\n- #0002-b // note\n"
-    );
+    assert_eq!(read_at(&temp, ".clew/path.md"), "0002 b // note\n");
 }
 
 #[test]
@@ -1808,9 +1930,7 @@ fn done_already_archived_done_is_success_with_warning() {
         "0001-a.md",
         &fixture_with(1, "a", "done", None),
     );
-    temp.child(".clew/path.md")
-        .write_str("# Path\n\n- #0001-a\n")
-        .unwrap();
+    temp.child(".clew/path.md").write_str("0001 a\n").unwrap();
 
     Command::cargo_bin("clew")
         .unwrap()
@@ -1823,7 +1943,7 @@ fn done_already_archived_done_is_success_with_warning() {
         .stderr(contains("Done #0001"));
 
     assert!(temp.path().join(".clew/archive/0001-a.md").exists());
-    assert_eq!(read_at(&temp, ".clew/path.md"), "# Path\n\n");
+    assert_eq!(read_at(&temp, ".clew/path.md"), "\n");
 }
 
 #[test]
@@ -1893,7 +2013,7 @@ fn abandon_accepts_slug_and_removes_increment_from_path_md() {
         &fixture_with(2, "b", "todo", None),
     );
     temp.child(".clew/path.md")
-        .write_str("# Path\n\n- #0001-add-oauth\n- #0002-old-b // note\n")
+        .write_str("0001 add-oauth\n0002 old-b // note\n")
         .unwrap();
 
     Command::cargo_bin("clew")
@@ -1904,10 +2024,7 @@ fn abandon_accepts_slug_and_removes_increment_from_path_md() {
         .success();
 
     assert!(temp.path().join(".clew/archive/0001-add-oauth.md").exists());
-    assert_eq!(
-        read_at(&temp, ".clew/path.md"),
-        "# Path\n\n- #0002-b // note\n"
-    );
+    assert_eq!(read_at(&temp, ".clew/path.md"), "0002 b // note\n");
 }
 
 #[test]
@@ -2044,9 +2161,7 @@ fn abandon_already_archived_abandoned_is_success_with_warning() {
         "0001-a.md",
         &fixture_with(1, "a", "abandoned", None),
     );
-    temp.child(".clew/path.md")
-        .write_str("# Path\n\n- #0001-a\n")
-        .unwrap();
+    temp.child(".clew/path.md").write_str("0001 a\n").unwrap();
 
     Command::cargo_bin("clew")
         .unwrap()
@@ -2058,7 +2173,7 @@ fn abandon_already_archived_abandoned_is_success_with_warning() {
         .stderr(contains("Abandoned #0001"));
 
     assert!(temp.path().join(".clew/archive/0001-a.md").exists());
-    assert_eq!(read_at(&temp, ".clew/path.md"), "# Path\n\n");
+    assert_eq!(read_at(&temp, ".clew/path.md"), "\n");
 }
 
 #[test]
@@ -2111,6 +2226,62 @@ fn reopen_transitions_archived_done_to_todo_and_unarchives() {
     let reopened = read_at(&temp, ".clew/increments/0001-a.md");
     assert!(reopened.contains("status: todo"));
     assert!(!reopened.contains("updated_at: 2026-04-20T10:00:00Z"));
+}
+
+#[test]
+fn reopen_appends_to_ranked_path_and_normalizes_existing_entries() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-existing.md",
+        &fixture_with(1, "existing", "backlog", None),
+    );
+    write_increment(
+        &temp,
+        "archive",
+        "0002-reopened.md",
+        &fixture_with(2, "reopened", "done", None),
+    );
+    temp.child(".clew/path.md")
+        .write_str("0001 backlog     existing\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["reopen", "2"])
+        .assert()
+        .success()
+        .stdout("#0002 .clew/increments/0002-reopened.md\n")
+        .stderr(contains("Reopened #0002"));
+
+    assert_eq!(
+        read_at(&temp, ".clew/path.md"),
+        "0001 existing\n0002 reopened\n"
+    );
+}
+
+#[test]
+fn reopen_self_loop_does_not_duplicate_existing_path_entry() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "todo", None),
+    );
+    temp.child(".clew/path.md").write_str("0001 a\n").unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["reopen", "1"])
+        .assert()
+        .success()
+        .stderr(contains("warning: #0001 already reopened"));
+
+    assert_eq!(read_at(&temp, ".clew/path.md"), "0001 a\n");
 }
 
 #[test]
@@ -2287,7 +2458,7 @@ fn fixture_with_created_at(id: u32, slug: &str, status: &str, created_at: &str) 
 }
 
 #[test]
-fn next_returns_first_path_reference() {
+fn next_returns_first_open_path_reference() {
     let temp = empty_project();
     write_increment(
         &temp,
@@ -2299,10 +2470,10 @@ fn next_returns_first_path_reference() {
         &temp,
         "increments",
         "0002-priority.md",
-        &fixture_with_created_at(2, "priority", "todo", "2026-04-21T10:00:00Z"),
+        &fixture_with_created_at(2, "priority", "backlog", "2026-04-21T10:00:00Z"),
     );
     temp.child(".clew/path.md")
-        .write_str("# Path\n\nnotes are ignored\n- #0002-priority\n- #0001-oldest\n")
+        .write_str("# Path\n\nnotes are ignored\n0002 priority\n0001 oldest\n")
         .unwrap();
 
     Command::cargo_bin("clew")
@@ -2370,6 +2541,137 @@ fn next_start_marks_selected_increment_in_progress() {
 }
 
 #[test]
+fn next_start_accepts_already_in_progress_path_pick() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-current.md",
+        &fixture_with_created_at(1, "current", "in_progress", "2026-04-20T10:00:00Z"),
+    );
+    temp.child(".clew/path.md")
+        .write_str("0001 current\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["next", "--start"])
+        .assert()
+        .success()
+        .stdout("0001\n")
+        .stderr(contains("warning: #0001 already in progress"));
+}
+
+#[test]
+fn next_removes_terminal_path_entries_and_selects_next_ranked_item() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-shipped.md",
+        &fixture_with_created_at(1, "shipped", "done", "2026-04-20T10:00:00Z"),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0002-abandoned.md",
+        &fixture_with_created_at(2, "abandoned", "abandoned", "2026-04-21T10:00:00Z"),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0003-active.md",
+        &fixture_with_created_at(3, "active", "todo", "2026-04-22T10:00:00Z"),
+    );
+    temp.child(".clew/path.md")
+        .write_str("0001 shipped\n0002 abandoned\n0003 active\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("next")
+        .assert()
+        .success()
+        .stdout("0003\n")
+        .stderr(contains(
+            "warning: removed terminal (done) path.md entry #0001-shipped",
+        ))
+        .stderr(contains(
+            "warning: removed terminal (abandoned) path.md entry #0002-abandoned",
+        ));
+
+    assert_eq!(read_at(&temp, ".clew/path.md"), "0003 active\n");
+}
+
+#[test]
+fn next_removes_archived_path_entries_and_selects_next_ranked_item() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "archive",
+        "0001-shipped.md",
+        &fixture_with_created_at(1, "shipped", "done", "2026-04-20T10:00:00Z"),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0002-active.md",
+        &fixture_with_created_at(2, "active", "todo", "2026-04-21T10:00:00Z"),
+    );
+    temp.child(".clew/path.md")
+        .write_str("0001 shipped\n0002 active\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("next")
+        .assert()
+        .success()
+        .stdout("0002\n")
+        .stderr(contains(
+            "warning: removed archived path.md entry #0001-shipped",
+        ));
+
+    assert_eq!(read_at(&temp, ".clew/path.md"), "0002 active\n");
+}
+
+#[test]
+fn next_falls_back_after_removing_all_path_entries() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-shipped.md",
+        &fixture_with_created_at(1, "shipped", "done", "2026-04-20T10:00:00Z"),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0002-active.md",
+        &fixture_with_created_at(2, "active", "todo", "2026-04-21T10:00:00Z"),
+    );
+    temp.child(".clew/path.md")
+        .write_str("0001 shipped\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("next")
+        .assert()
+        .success()
+        .stdout("0002\n")
+        .stderr(contains(
+            "warning: removed terminal (done) path.md entry #0001-shipped",
+        ));
+
+    assert_eq!(read_at(&temp, ".clew/path.md"), "\n");
+}
+
+#[test]
 fn next_errors_when_no_todo_exists() {
     let temp = empty_project();
     write_increment(
@@ -2393,7 +2695,7 @@ fn next_errors_when_no_todo_exists() {
 fn next_errors_on_stale_path_reference() {
     let temp = empty_project();
     temp.child(".clew/path.md")
-        .write_str("# Path\n\n- #0009-missing\n")
+        .write_str("0009 missing\n")
         .unwrap();
 
     Command::cargo_bin("clew")
@@ -2419,8 +2721,53 @@ fn lint_succeeds_when_project_has_no_drift() {
         "0001-a.md",
         &fixture_with(1, "a", "todo", None),
     );
+    temp.child(".clew/path.md").write_str("0001 a\n").unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("lint")
+        .assert()
+        .success()
+        .stderr(contains("No lint issues found"));
+}
+
+#[test]
+fn lint_flags_pasted_list_output_status_column() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-a.md",
+        &fixture_with(1, "a", "todo", None),
+    );
     temp.child(".clew/path.md")
-        .write_str("# Path\n\n- #0001-a\n")
+        .write_str("0001 todo        a\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("lint")
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains(
+            "path.md entry for #0001 includes a status column; expected `0001 a`",
+        ));
+}
+
+#[test]
+fn lint_allows_status_word_slug_with_annotation() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-todo.md",
+        &fixture_with(1, "todo", "backlog", None),
+    );
+    temp.child(".clew/path.md")
+        .write_str("0001 todo p0\n")
         .unwrap();
 
     Command::cargo_bin("clew")
@@ -2433,22 +2780,56 @@ fn lint_succeeds_when_project_has_no_drift() {
 }
 
 #[test]
-fn lint_flags_path_references_that_cannot_be_selected() {
+fn lint_allows_path_references_to_any_non_terminal_status() {
     let temp = empty_project();
     write_increment(
         &temp,
         "increments",
-        "0001-in-progress.md",
-        &fixture_with(1, "in-progress", "in_progress", None),
+        "0001-backlog.md",
+        &fixture_with(1, "backlog", "backlog", None),
     );
+    write_increment(
+        &temp,
+        "increments",
+        "0002-todo.md",
+        &fixture_with(2, "todo", "todo", None),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0003-in-progress.md",
+        &fixture_with(3, "in-progress", "in_progress", None),
+    );
+    temp.child(".clew/path.md")
+        .write_str("0001 backlog\n0002 todo\n0003 in-progress\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("lint")
+        .assert()
+        .success()
+        .stderr(contains("No lint issues found"));
+}
+
+#[test]
+fn lint_flags_path_references_that_are_not_open_work() {
+    let temp = empty_project();
     write_increment(
         &temp,
         "archive",
         "0002-done.md",
         &fixture_with(2, "done", "done", None),
     );
+    write_increment(
+        &temp,
+        "increments",
+        "0003-abandoned.md",
+        &fixture_with(3, "abandoned", "abandoned", None),
+    );
     temp.child(".clew/path.md")
-        .write_str("# Path\n\n- #0001-in-progress\n- #0002-done\n- #0009-missing\n")
+        .write_str("0002 done\n0003 abandoned\n0009 missing\n")
         .unwrap();
 
     Command::cargo_bin("clew")
@@ -2458,12 +2839,11 @@ fn lint_flags_path_references_that_cannot_be_selected() {
         .assert()
         .failure()
         .code(1)
-        .stderr(contains(
-            "path.md references #0001-in-progress with status in_progress; expected todo",
-        ))
         .stderr(contains("path.md references archived #0002-done"))
-        .stderr(contains("path.md references missing #0009"))
-        .stderr(contains("error: lint found 3 issue(s)"));
+        .stderr(contains(
+            "path.md references #0003-abandoned with status abandoned; expected non-terminal status",
+        ))
+        .stderr(contains("path.md references missing #0009"));
 }
 
 #[test]
@@ -2498,7 +2878,7 @@ fn lint_flags_terminal_statuses_left_in_increments() {
 }
 
 #[test]
-fn lint_flags_todo_items_missing_from_non_empty_path() {
+fn lint_flags_open_items_missing_from_non_empty_path() {
     let temp = empty_project();
     write_increment(
         &temp,
@@ -2510,10 +2890,10 @@ fn lint_flags_todo_items_missing_from_non_empty_path() {
         &temp,
         "increments",
         "0002-missing.md",
-        &fixture_with(2, "missing", "todo", None),
+        &fixture_with(2, "missing", "backlog", None),
     );
     temp.child(".clew/path.md")
-        .write_str("# Path\n\n- #0001-listed\n")
+        .write_str("0001 listed\n")
         .unwrap();
 
     Command::cargo_bin("clew")
@@ -2524,7 +2904,7 @@ fn lint_flags_todo_items_missing_from_non_empty_path() {
         .failure()
         .code(1)
         .stderr(contains(
-            "#0002-missing is todo but missing from path.md priority order",
+            "#0002-missing is backlog but missing from path.md priority order",
         ));
 }
 
@@ -2576,7 +2956,7 @@ fn lint_flags_filename_frontmatter_id_mismatch() {
 }
 
 #[test]
-fn lint_flags_stale_path_reference_per_line() {
+fn lint_flags_duplicate_path_references() {
     let temp = empty_project();
     write_increment(
         &temp,
@@ -2585,7 +2965,30 @@ fn lint_flags_stale_path_reference_per_line() {
         &fixture_with(1, "current", "todo", None),
     );
     temp.child(".clew/path.md")
-        .write_str("# Path\n\n- #0001-old\n<!-- canonical elsewhere #0001-current -->\n")
+        .write_str("0001 current\n0001 current\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .arg("lint")
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(contains("path.md references #0001 2 times; keep one entry"));
+}
+
+#[test]
+fn lint_flags_stale_slug_in_path_entry() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-current.md",
+        &fixture_with(1, "current", "todo", None),
+    );
+    temp.child(".clew/path.md")
+        .write_str("0001 old-slug\n")
         .unwrap();
 
     Command::cargo_bin("clew")
@@ -2596,6 +2999,6 @@ fn lint_flags_stale_path_reference_per_line() {
         .failure()
         .code(1)
         .stderr(contains(
-            "path.md reference #0001 is not canonical; expected #0001-current",
+            "path.md entry for #0001 has stale slug `old-slug`; expected `current`",
         ));
 }

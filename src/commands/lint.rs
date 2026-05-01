@@ -33,7 +33,7 @@ fn collect_issues(root: &Path) -> Result<Vec<String>, ClewError> {
     let mut issues = Vec::new();
 
     let mut entries_by_file_id = BTreeMap::new();
-    let mut todo_ids = BTreeSet::new();
+    let mut open_ids = BTreeSet::new();
 
     for loaded_entry in loaded {
         let file_id = loaded_entry.entry.id;
@@ -62,10 +62,9 @@ fn collect_issues(root: &Path) -> Result<Vec<String>, ClewError> {
                 Status::Abandoned => issues.push(format!(
                     "#{file_id:04}-{slug} has status abandoned but is not archived; run `clew abandon {file_id:04}`"
                 )),
-                Status::Todo => {
-                    todo_ids.insert(file_id);
+                Status::Backlog | Status::Todo | Status::InProgress => {
+                    open_ids.insert(file_id);
                 }
-                Status::Backlog | Status::InProgress => {}
             }
         }
 
@@ -81,6 +80,17 @@ fn collect_issues(root: &Path) -> Result<Vec<String>, ClewError> {
 
     let path_md = fs::read_path_md(root)?;
     let path_refs = path::references(&path_md);
+    let mut path_ref_counts = BTreeMap::<u32, usize>::new();
+    for id in &path_refs {
+        *path_ref_counts.entry(*id).or_default() += 1;
+    }
+    for (id, count) in &path_ref_counts {
+        if *count > 1 {
+            issues.push(format!(
+                "path.md references #{id:04} {count} times; keep one entry"
+            ));
+        }
+    }
     let path_ref_set: BTreeSet<u32> = path_refs.iter().copied().collect();
 
     for id in path_refs {
@@ -90,37 +100,56 @@ fn collect_issues(root: &Path) -> Result<Vec<String>, ClewError> {
                 "path.md references archived #{id:04}-{}; remove it or run `clew reopen {id:04}`",
                 entry.slug
             )),
-            Some(entry) if entry.status == Status::Todo => {
-                let expected = format!("#{id:04}-{}", entry.slug);
-                for line in path_md.lines().filter(|line| line_references(line, id)) {
-                    if !line.contains(&expected) {
+            Some(entry)
+                if matches!(
+                    entry.status,
+                    Status::Backlog | Status::Todo | Status::InProgress
+                ) =>
+            {
+                for line in path_md.lines() {
+                    let Some(parsed) = path::parse_entry(line) else {
+                        continue;
+                    };
+                    if parsed.id != id {
+                        continue;
+                    }
+                    if path::has_status_column(line, &entry.slug) {
                         issues.push(format!(
-                            "path.md reference #{id:04} is not canonical; expected {expected}"
+                            "path.md entry for #{id:04} includes a status column; expected `{id:04} {}` (run `clew path sync` when available)",
+                            entry.slug
                         ));
+                        continue;
+                    }
+                    match parsed.slug {
+                        None => issues.push(format!(
+                            "path.md entry for #{id:04} is missing the slug column; expected `{id:04} {}`",
+                            entry.slug
+                        )),
+                        Some(slug) if slug != entry.slug => issues.push(format!(
+                            "path.md entry for #{id:04} has stale slug `{slug}`; expected `{}`",
+                            entry.slug
+                        )),
+                        Some(_) => {}
                     }
                 }
             }
             Some(entry) => issues.push(format!(
-                "path.md references #{id:04}-{} with status {}; expected todo",
+                "path.md references #{id:04}-{} with status {}; expected non-terminal status",
                 entry.slug, entry.status
             )),
         }
     }
 
     if !path_ref_set.is_empty() {
-        for id in todo_ids.difference(&path_ref_set) {
+        for id in open_ids.difference(&path_ref_set) {
             if let Some(entry) = entries_by_file_id.get(id) {
                 issues.push(format!(
-                    "#{id:04}-{} is todo but missing from path.md priority order",
-                    entry.slug
+                    "#{id:04}-{} is {} but missing from path.md priority order",
+                    entry.slug, entry.status
                 ));
             }
         }
     }
 
     Ok(issues)
-}
-
-fn line_references(line: &str, id: u32) -> bool {
-    line.contains(&format!("#{id:04}"))
 }

@@ -1,5 +1,5 @@
 ---
-last_major_update: 2026-04-30
+last_major_update: 2026-05-01
 ---
 
 # Clew — Design Plan
@@ -8,11 +8,11 @@ last_major_update: 2026-04-30
 
 ## Revisions
 
+- 2026-05-01 — `clew next` now repairs terminal/archived `path.md` membership before selection because Clew owns path membership while users own path order.
+- 2026-04-30 — `path.md` line format is now bare `NNNN slug` (no `#` sigil, no list markers, no status column) so the file mirrors `clew list`'s leading columns and stays drift-free against frontmatter status.
+- 2026-04-30 — `path.md` now owns rank for all non-terminal work while frontmatter remains the source of lifecycle truth, because users need one editable priority view without duplicated status sections.
 - 2026-04-30 — First-agent onboarding is now part of init because Clew only becomes useful to agents after users copy the generated agent contract into their persistent agent instructions.
 - 2026-04-30 — Distribution moved from an open question to a dist-backed release path because Clew is a single-binary CLI and should have repeatable macOS/Linux artifacts before native Windows is advertised.
-- 2026-04-30 — Tag writes moved into the CLI (`clew new --tag`, `clew tag`, `clew untag`) because tags affect capture/search timing, while stdin remains body-only to avoid frontmatter merge semantics.
-- 2026-04-28 — CLI success output now treats stdout as machine-usable result data, with stderr reserved for warnings, errors, and human status chatter; this lets agents consume IDs and filepaths without extra lookup calls.
-- 2026-04-28 — self-hosting now uses a promoted local binary so `./clew` stays available while source builds are temporarily broken.
 
 _Older entries pruned; use `git log hammock-thinking/crew-plan.md` for full history._
 
@@ -296,30 +296,34 @@ A single hand-curated markdown file expressing priority order across all in-flig
 
 ### Format
 
-```markdown
-# Path
-
-- #0042-add-oauth-routes
-- #0044-fix-session-timeout
-- #0043-token-refresh-logic
+```text
+0042 add-oauth-routes
+0044 fix-session-timeout
+0043 token-refresh-logic
 ```
 
 - Line order = priority.
-- **Full ID+slug form** for human scannability — `path.md` is read every session and is small; readability wins over token-shaving here.
-- **Increments only** — path lists individual increments
-- Permissive parser: extracts `#NNNN` references, ignores everything else (so users can add prose annotations freely).
-- Bullet list (no numbering — order is positional, renumbering on edit is annoying).
+- **Bare `NNNN slug` columns** mirror the leading two columns of `clew list`, so users can copy `clew list` rows directly into `path.md` (drop the status column with one cut).
+- **Increments only** — path lists individual increments.
+- **Status is not persisted** in `path.md`. Frontmatter is the only source of truth for lifecycle state; `clew list` joins status at render time.
+- Permissive parser: any line starting with a four-digit ID followed by whitespace is an entry; everything else (headings, blank lines, prose) is ignored. Trailing text after the slug column is preserved as a free-form annotation.
+- No bullets, no numbering — order is positional and editor line-moves are the supported reorder UX.
 
 ### Rules
 
-- **Opt-in.** Empty `path.md` is fine for projects with 1–3 todos.
-- **Resolution order**: `clew next` returns the top of `path.md` if non-empty; otherwise the oldest `todo` by `created_at`. Always returns a single increment (parent increments still WIP).
+- **Opt-in.** Empty `path.md` is fine for projects with 1–3 increments.
+- **Rank only.** `path.md` does not encode lifecycle status. Frontmatter remains the source of truth for `backlog`, `todo`, `in_progress`, `done`, and `abandoned`.
+- **All non-terminal work may be ranked.** `backlog`, `todo`, and `in_progress` increments can appear in `path.md`; `done` and `abandoned` increments should not.
+- **No status sections.** Avoid `## In Progress` / `## Backlog` sections because moving lines between sections would either duplicate status or imply status mutation. Keep the file flat so editor line moves only change rank.
+- **Resolution order**: `clew next` scans `path.md` from the top, removes archived/terminal entries with warnings, and returns the first remaining non-terminal item. Missing IDs fail loudly. If no ranked item remains, it falls back to the oldest `todo` by `created_at`. Always returns a single increment (parent increments still WIP).
+- **List order**: `clew list` displays non-terminal increments in `path.md` rank order first, then unranked increments by ID. Status is joined from frontmatter at render time.
 - **CLI auto-maintains.**
-  - `clew done 0042` removes `#0042` from `path.md`.
-  - `clew abandon 0042` removes `#0042` from `path.md` (it's no longer in flight).
-  - `clew reopen 0042` appends `#0042` to the **end** of `path.md` (back in flight, lowest priority — the operator can hand-edit to reprioritize).
-  - CLI normalizes entries to current ID+slug form on write (self-healing against scope/slug drift).
-- **`clew lint`** flags drift: items in path that don't exist; `todo` items not in path that maybe should be.
+  - `clew new` appends the new increment to the end of `path.md` when the file already has ranked entries; empty/unranked `path.md` remains opt-out.
+  - `clew done 0042` removes the `0042 ...` entry from `path.md`.
+  - `clew abandon 0042` removes the `0042 ...` entry from `path.md` (it's no longer in flight).
+  - `clew reopen 0042` appends `0042 current-slug` to the **end** of `path.md` (back in flight, lowest priority — the operator can hand-edit to reprioritize).
+  - CLI normalizes entries to canonical `NNNN slug` form on write (self-healing against slug drift), preserving any trailing user annotation.
+- **`clew lint`** flags drift: duplicate path entries; items in path that don't exist; terminal/archived items in path; stale slug column; non-terminal items missing from a non-empty path.
 - **Branch hygiene.** `path.md` is intended as `main`-line state, not branch-local scratch. Reordering it on a feature branch invites needless merge churn — keep priority edits on the trunk where possible.
 
 ---

@@ -1,0 +1,16 @@
+0003 clew-promote-command
+0008 add-distinction-for-bugs
+0012 clew-new-help-add-usage-example-and-stdin-heredoc
+0014 clew-list-group-output-by-status-with-section-head
+0018 native-windows-support-speculative
+0019 verify-clew-on-wsl-and-git-bash
+0021 design-github-issue-integration-s
+0022 speed-up-quality-gate
+0023 deepen-status-transitions
+0024 plan-new-increments
+0025 deepen-path-maintenance
+0026 unbraid-storage-parsing
+0027 deepen-lint-rules
+0028 polish-agent-onboarding
+0029 add-path-sync
+0030 centralize-path-maintenance

@@ -1045,8 +1045,14 @@ fn list_finds_tags_from_new_and_tag_commands() {
 }
 
 #[test]
-fn list_default_shows_in_flight_only_sorted_by_id_when_path_is_empty() {
+fn list_default_shows_in_flight_sorted_by_status_then_id_when_path_is_empty() {
     let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0003-current.md",
+        &fixture_with(3, "current", "in_progress", None),
+    );
     write_increment(
         &temp,
         "increments",
@@ -1062,8 +1068,8 @@ fn list_default_shows_in_flight_only_sorted_by_id_when_path_is_empty() {
     write_increment(
         &temp,
         "archive",
-        "0003-archived.md",
-        &fixture_with(3, "archived", "done", None),
+        "0004-archived.md",
+        &fixture_with(4, "archived", "done", None),
     );
 
     Command::cargo_bin("clew")
@@ -1072,7 +1078,7 @@ fn list_default_shows_in_flight_only_sorted_by_id_when_path_is_empty() {
         .args(["list"])
         .assert()
         .success()
-        .stdout("0001 backlog     first\n0002 todo        second\n");
+        .stdout("0003 in_progress current\n0002 todo        second\n0001 backlog     first\n");
 }
 
 #[test]
@@ -1110,6 +1116,34 @@ fn list_default_uses_path_rank_before_unlisted_items() {
 }
 
 #[test]
+fn list_default_path_rank_trumps_status_order() {
+    let temp = empty_project();
+    write_increment(
+        &temp,
+        "increments",
+        "0001-first.md",
+        &fixture_with(1, "first", "backlog", None),
+    );
+    write_increment(
+        &temp,
+        "increments",
+        "0002-second.md",
+        &fixture_with(2, "second", "in_progress", None),
+    );
+    temp.child(".clew/path.md")
+        .write_str("0001 first\n0002 second\n")
+        .unwrap();
+
+    Command::cargo_bin("clew")
+        .unwrap()
+        .current_dir(temp.path())
+        .args(["list"])
+        .assert()
+        .success()
+        .stdout("0001 backlog     first\n0002 in_progress second\n");
+}
+
+#[test]
 fn list_default_excludes_terminal_statuses_even_if_unarchived() {
     let temp = empty_project();
     write_increment(
@@ -1141,7 +1175,7 @@ fn list_default_excludes_terminal_statuses_even_if_unarchived() {
 }
 
 #[test]
-fn list_all_includes_archived_and_terminal_statuses() {
+fn list_all_includes_archived_and_terminal_statuses_after_active_work() {
     let temp = empty_project();
     write_increment(
         &temp,
@@ -1161,6 +1195,15 @@ fn list_all_includes_archived_and_terminal_statuses() {
         "0003-shipped.md",
         &fixture_with(3, "shipped", "done", None),
     );
+    write_increment(
+        &temp,
+        "archive",
+        "0004-dropped.md",
+        &fixture_with(4, "dropped", "abandoned", None),
+    );
+    temp.child(".clew/path.md")
+        .write_str("0002 done-but-not-archived\n")
+        .unwrap();
 
     Command::cargo_bin("clew")
         .unwrap()
@@ -1168,7 +1211,9 @@ fn list_all_includes_archived_and_terminal_statuses() {
         .args(["list", "--all"])
         .assert()
         .success()
-        .stdout("0001 todo        active\n0002 done        done-but-not-archived\n0003 done        shipped\n");
+        .stdout(
+            "0001 todo        active\n0002 done        done-but-not-archived\n0003 done        shipped\n0004 abandoned   dropped\n",
+        );
 }
 
 #[test]

@@ -8,11 +8,11 @@ last_major_update: 2026-05-01
 
 ## Revisions
 
+- 2026-05-01 — `clew list` now sorts ranked active work before unranked status groups because path order is the planning signal and status remains lifecycle metadata.
 - 2026-05-01 — `clew next` now repairs terminal/archived `path.md` membership before selection because Clew owns path membership while users own path order.
 - 2026-04-30 — `path.md` line format is now bare `NNNN slug` (no `#` sigil, no list markers, no status column) so the file mirrors `clew list`'s leading columns and stays drift-free against frontmatter status.
 - 2026-04-30 — `path.md` now owns rank for all non-terminal work while frontmatter remains the source of lifecycle truth, because users need one editable priority view without duplicated status sections.
 - 2026-04-30 — First-agent onboarding is now part of init because Clew only becomes useful to agents after users copy the generated agent contract into their persistent agent instructions.
-- 2026-04-30 — Distribution moved from an open question to a dist-backed release path because Clew is a single-binary CLI and should have repeatable macOS/Linux artifacts before native Windows is advertised.
 
 _Older entries pruned; use `git log hammock-thinking/crew-plan.md` for full history._
 
@@ -316,7 +316,7 @@ A single hand-curated markdown file expressing priority order across all in-flig
 - **All non-terminal work may be ranked.** `backlog`, `todo`, and `in_progress` increments can appear in `path.md`; `done` and `abandoned` increments should not.
 - **No status sections.** Avoid `## In Progress` / `## Backlog` sections because moving lines between sections would either duplicate status or imply status mutation. Keep the file flat so editor line moves only change rank.
 - **Resolution order**: `clew next` scans `path.md` from the top, removes archived/terminal entries with warnings, and returns the first remaining non-terminal item. Missing IDs fail loudly. If no ranked item remains, it falls back to the oldest `todo` by `created_at`. Always returns a single increment (parent increments still WIP).
-- **List order**: `clew list` displays non-terminal increments in `path.md` rank order first, then unranked increments by ID. Status is joined from frontmatter at render time.
+- **List order**: `clew list` displays ranked non-terminal increments in `path.md` order first, then unranked non-terminal increments by status (`in_progress`, `todo`, `backlog`) and ID. `clew list --all` appends terminal increments after active work by status (`done`, `abandoned`) and ID. Status is joined from frontmatter at render time.
 - **CLI auto-maintains.**
   - `clew new` appends the new increment to the end of `path.md` when the file already has ranked entries; empty/unranked `path.md` remains opt-out.
   - `clew done 0042` removes the `0042 ...` entry from `path.md`.

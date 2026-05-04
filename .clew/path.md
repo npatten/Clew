@@ -1,7 +1,6 @@
 0003 clew-promote-command
 0008 add-distinction-for-bugs
 0012 clew-new-help-add-usage-example-and-stdin-heredoc
-0014 clew-list-group-output-by-status-with-section-head
 0018 native-windows-support-speculative
 0019 verify-clew-on-wsl-and-git-bash
 0021 design-github-issue-integration-s

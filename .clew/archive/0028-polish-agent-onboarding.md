@@ -1,11 +1,11 @@
 ---
 id: 28
-status: in_progress
+status: done
 tags:
 - launch-polish
 - docs
 created_at: 2026-05-01T01:40:33Z
-updated_at: 2026-05-01T01:40:41Z
+updated_at: 2026-05-09T06:32:50Z
 ---
 ## Goal
 

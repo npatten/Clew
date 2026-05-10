@@ -1,10 +1,10 @@
 ---
 id: 3
-status: backlog
+status: abandoned
 tags:
 - needs-info
 created_at: 2026-04-28T00:44:23Z
-updated_at: 2026-04-30T03:32:54Z
+updated_at: 2026-05-01T16:14:09Z
 ---
 
 # `clew promote` command

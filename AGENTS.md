@@ -3,15 +3,6 @@
 These are the guidelines and rules for agents working on the Clew project.
 In Greek myth, Ariadne gave Theseus the "Clew" (a ball of thread) to navigate the labyrinth so he could find his way back out. It represents the lightweight tracking of Tasks and Increments ensuring the codebase remains stable and you never lose your way.
 
-## Conversational Style
-
-- Keep answers short and concise
-- No fluff, no emojis, no flattery
-- No em dashes —
-- Be kind but direct (e.g., "Thanks @user" not "Thanks so much @user!")
-- When designing or planning, co-design — don't just accept user direction. Push back on architecture, abstractions, data models when needed.
-- Check the user, tell them when they're wrong.
-
 ## Resources
 
 - Full project spec: `clew-spec.md`

@@ -1,4 +1,3 @@
-0003 clew-promote-command
 0008 add-distinction-for-bugs
 0012 clew-new-help-add-usage-example-and-stdin-heredoc
 0018 native-windows-support-speculative
@@ -10,6 +9,7 @@
 0025 deepen-path-maintenance
 0026 unbraid-storage-parsing
 0027 deepen-lint-rules
-0028 polish-agent-onboarding
 0029 add-path-sync
 0030 centralize-path-maintenance
+0031 examine-clode-as-design-reference
+0032 allow-backlog-to-done

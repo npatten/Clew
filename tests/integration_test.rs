@@ -1,5 +1,6 @@
 use assert_cmd::Command;
 use assert_fs::prelude::*;
+use predicates::prelude::PredicateBooleanExt;
 use predicates::str::contains;
 
 #[test]
@@ -20,6 +21,24 @@ fn top_level_help_lists_new_command_with_usage() {
         .success()
         .stdout(contains("Usage: clew [COMMAND]"))
         .stdout(contains("new       Create a new increment"));
+}
+
+#[test]
+fn top_level_help_omits_deferred_promote_command() {
+    let mut cmd = Command::cargo_bin("clew").unwrap();
+    cmd.arg("--help")
+        .assert()
+        .success()
+        .stdout(contains("promote").not());
+}
+
+#[test]
+fn promote_help_is_not_exposed() {
+    let mut cmd = Command::cargo_bin("clew").unwrap();
+    cmd.args(["promote", "--help"])
+        .assert()
+        .failure()
+        .stderr(contains("unrecognized subcommand"));
 }
 
 #[test]

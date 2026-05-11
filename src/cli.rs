@@ -42,8 +42,6 @@ pub enum Command {
         #[arg(short = 'a', long)]
         all: bool,
     },
-    /// Promote an increment from backlog to todo
-    Promote { id: u32 },
     /// Mark an increment as in_progress
     Start { id: String },
     /// Block an increment with a reason

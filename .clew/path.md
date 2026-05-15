@@ -12,4 +12,3 @@
 0029 add-path-sync
 0030 centralize-path-maintenance
 0031 examine-clode-as-design-reference
-0032 allow-backlog-to-done

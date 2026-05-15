@@ -1,5 +1,5 @@
 ---
-last_major_update: 2026-05-01
+last_major_update: 2026-05-14
 ---
 
 # Clew — Design Plan
@@ -8,11 +8,11 @@ last_major_update: 2026-05-01
 
 ## Revisions
 
+- 2026-05-14 — `clew done` now supports `backlog → done` because terminal side effects are useful even when work is resolved before promotion or start.
 - 2026-05-01 — `clew list` now sorts ranked active work before unranked status groups because path order is the planning signal and status remains lifecycle metadata.
 - 2026-05-01 — `clew next` now repairs terminal/archived `path.md` membership before selection because Clew owns path membership while users own path order.
 - 2026-04-30 — `path.md` line format is now bare `NNNN slug` (no `#` sigil, no list markers, no status column) so the file mirrors `clew list`'s leading columns and stays drift-free against frontmatter status.
 - 2026-04-30 — `path.md` now owns rank for all non-terminal work while frontmatter remains the source of lifecycle truth, because users need one editable priority view without duplicated status sections.
-- 2026-04-30 — First-agent onboarding is now part of init because Clew only becomes useful to agents after users copy the generated agent contract into their persistent agent instructions.
 
 _Older entries pruned; use `git log hammock-thinking/crew-plan.md` for full history._
 
@@ -205,15 +205,17 @@ error: slug 'add-oauth' is already used by #0042-add-oauth.md
 ### Status set
 
 ```
-backlog → todo → in_progress → done
-            ↑                   ↓
-            └── reopen ─── abandoned
+backlog ───────────────→ done
+   ↓                       ↑ ↓
+ todo → in_progress ───────┘ abandoned
+   ↑                         ↓
+   └──────── reopen ─────────┘
 ```
 
 - **`backlog`** — captured but not yet committed. Raw, possibly underspecified.
 - **`todo`** — sharpened, ready for an agent to pick up without asking questions.
 - **`in_progress`** — actively being worked.
-- **`done`** — completed and shipped. Archived.
+- **`done`** — completed, shipped, or resolved without implementation. Archived.
 - **`abandoned`** — explicitly dropped, with reason. Archived but distinguishable from `done`.
 
 ### Blocked is a flag, not a status
@@ -229,12 +231,13 @@ Status reflects intent ("I want to be working this"); flag reflects reality. Cle
 
 - `backlog → todo` (direct file edit)
 - `backlog → in_progress` (via `clew start`)
+- `backlog → done` (via `clew done`; archives the file)
 - `todo → in_progress` (via `clew start`)
 - `in_progress → todo` (direct file edit)
 - `in_progress → done` (via `clew done`; archives the file)
 - Any state `→ abandoned` (via `clew abandon "reason"`; archives)
 - `done | abandoned → todo` (via `clew reopen`; unarchives)
-- **No CLI support**: `backlog → done`. (could always manually edit file)
+- **No CLI support**: `todo → done`. Start the work first or edit status directly if you intentionally bypass the lifecycle.
 
 **Self-loops on terminal-side-effect transitions are tolerated, not rejected.**
 
@@ -363,7 +366,7 @@ User-facing docs and generated docs assume Clew is installed and invoked as `cle
 - `clew start <id>` — → in_progress.
 - `clew block <id> "reason"` / `clew unblock <id>` — toggle blocked flag.
 - `clew tag <id> <tag>...` / `clew untag <id> <tag>...` — add or remove tags. Adding an existing tag is idempotent success; removing a missing tag is a user error.
-- `clew done <id>` — → done, archive, remove from path.
+- `clew done <id>` — backlog | in_progress → done, archive, remove from path.
 - `clew abandon <id> "reason"` — → abandoned, archive.
 - `clew reopen <id>` — → todo, unarchive.
 - `clew next [--start]` — show (or start) the top of path / oldest todo.

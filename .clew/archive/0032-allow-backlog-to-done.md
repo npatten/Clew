@@ -1,8 +1,8 @@
 ---
 id: 32
-status: backlog
+status: done
 created_at: 2026-05-04T18:55:33Z
-updated_at: 2026-05-04T18:55:33Z
+updated_at: 2026-05-15T02:30:04Z
 ---
 ## Goal
 
@@ -33,3 +33,12 @@ Sometimes backlog items are resolved by an external decision, duplicate discover
 - Path cleanup and archive behavior match existing `done` behavior.
 - Tests cover backlog-to-done and still reject inappropriate transitions.
 - `clew-spec.md` is updated to document the supported transition.
+
+## Implementation notes
+
+- Final approach: keep the implementation narrow by adding `Status::Backlog` to the existing `clew done` transition allowlist; do not add `Status::Todo`.
+- Relevant seams: `src/commands/done.rs` owns the command policy; existing storage/archive/path cleanup behavior should remain unchanged.
+- Validation plan: update integration coverage for backlog-to-done success, backlog path cleanup, and `todo -> done` rejection; run focused `done` tests plus the full project quality gate.
+- Docs/spec: update `clew-spec.md` to document `backlog -> done` as supported and keep `todo -> done` unsupported.
+- Known risks: assert timestamp changes on the `updated_at:` line only because `created_at` remains unchanged; create any secondary fixture needed before expecting path slug normalization.
+- Non-goals: no archive collision/atomicity refactor, no stdout/stderr contract changes, and no new handling for archived backlog drift.

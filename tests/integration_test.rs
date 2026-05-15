@@ -55,7 +55,16 @@ fn new_help_documents_arguments_and_flags() {
         .stdout(contains("--parent <PARENT>"))
         .stdout(contains("Parent increment ID"))
         .stdout(contains("--tag <TAGS>"))
-        .stdout(contains("Tag to attach; repeat for multiple tags"));
+        .stdout(contains("Tag to attach; repeat for multiple tags"))
+        .stdout(contains("clew new \"Add OAuth route handlers\""))
+        .stdout(contains("clew new --ready \"Add OAuth route handlers\""))
+        .stdout(contains("clew new \"Add OAuth route handlers\" < body.md"))
+        .stdout(contains(
+            "printf 'Body text here' | clew new \"Add OAuth route handlers\"",
+        ))
+        .stdout(contains(
+            "If stdin is non-interactive, it is read verbatim as the increment body.",
+        ));
 }
 
 // ---------------------------------------------------------------------------

@@ -17,6 +17,13 @@ pub enum Command {
     /// Initialize .clew/ in the current directory
     Init,
     /// Create a new increment; reads body content from non-TTY stdin
+    #[command(after_help = r#"Examples:
+  clew new "Add OAuth route handlers"
+  clew new --ready "Add OAuth route handlers"
+  clew new "Add OAuth route handlers" < body.md
+  printf 'Body text here' | clew new "Add OAuth route handlers"
+
+If stdin is non-interactive, it is read verbatim as the increment body."#)]
     New {
         /// Increment title
         title: String,

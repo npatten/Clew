@@ -1,5 +1,5 @@
 ---
-description: Plan, implement, review, and close a Clew increment
+description: Plan, implement, review, and close a Clew increment in it's own git worktree
 argument-hint: "<increment-id>"
 ---
 
@@ -9,12 +9,14 @@ If `$1` is empty, ask me for the increment ID before doing anything else.
 
 ## Authority and constraints
 
-- Parent session owns orchestration, Clew commands, repo edits outside delegated worker runs, quality gates, user approval, `clew done`, and git commits.
-- Invoke Clew as `clew` from the repo root for normal project workflow.
+- Parent session owns orchestration, Clew commands, repo edits outside delegated worker runs, quality gates, user approval, `clew done`, and git operations.
+- The entire increment effort runs in a dedicated git worktree at `../clew-worktrees/$1/` on branch `clew/$1`, branched from `main`. This isolates parallel `/go` runs on different increments.
+- After the worktree is created, the parent session and all child subagents operate with `cwd` set to the worktree path. Pass `cwd: ../clew-worktrees/$1` (or absolute equivalent) to every subagent invocation.
+- Invoke Clew as `clew` from the worktree root for normal project workflow.
 - Use `./clew` only when intentionally testing this repository's promoted local development build after `scripts/promote-clew`.
 - Use one worker by default.
 - Child subagents must receive concrete role-specific tasks. Do not ask child agents to run their own subagent workflows.
-- Do not mark the increment done or commit until `scripts/promote-clew` passes in one sweep and I approve.
+- Do not commit, push, or open a PR until `scripts/promote-clew` passes in one sweep and I approve.
 - Cap review/fix loops at 3 unless I approve more.
 - Don't blindly trust reviewer feedback, think critically about it and act accordingly in the best interest of the project.
 - If a finding requires an unapproved product, scope, architecture, or data-model decision, stop and ask me.
@@ -40,13 +42,25 @@ Review the increment for:
 
 If material requirements are unclear, ask me clarification questions before starting. If the increment needs light sharpening, propose the edit and ask before making it unless I already authorized backlog cleanup.
 
-### 2. Start the increment
+### 2. Create the worktree and start the increment
 
-After scope is clear, run:
+After scope is clear:
 
-```bash
-clew start $1
-```
+1. Confirm `../clew-worktrees/$1/` does not already exist and branch `clew/$1` is not already checked out. If either is true, stop and ask me how to proceed (resume? clean up first?).
+2. Create the worktree off `main`:
+
+   ```bash
+   git worktree add ../clew-worktrees/$1 -b clew/$1 main
+   ```
+
+3. From here on, treat `../clew-worktrees/$1/` as the working root. Run every command and every subagent with `cwd` set to that path.
+4. Inside the worktree, run:
+
+   ```bash
+   clew start $1
+   ```
+
+   The status edit becomes the first change on the `clew/$1` branch.
 
 ### 3. Build planning context
 
@@ -160,16 +174,34 @@ Then ask me for approval before running `clew done $1` or committing.
 
 ### 11. After approval only
 
-Run:
+From inside the worktree (`../clew-worktrees/$1/`):
 
-```bash
-clew done $1
-```
+1. Mark the increment done:
 
-Commit only files changed for this increment. Prefix the commit message with `[#$1]` and include the required `Clankers:` co-author block. Finally run:
+   ```bash
+   clew done $1
+   ```
 
-```bash
-git status --short
-```
+2. Commit only files changed for this increment. Prefix the commit message with `[#$1]` and include the required `Clankers:` co-author block.
+3. Confirm the worktree is clean:
 
-Confirm the workspace is clean or only contains expected unrelated changes.
+   ```bash
+   git status --short
+   ```
+
+4. Push the branch and open a PR for me to review:
+
+   ```bash
+   git push -u origin clew/$1
+   gh pr create --fill --base main --head clew/$1
+   ```
+
+5. Print the worktree cleanup hint (do not run it):
+
+   ```
+   After the PR is merged, clean up with:
+     git worktree remove ../clew-worktrees/$1
+     git branch -d clew/$1
+   ```
+
+Leave merging the PR and removing the worktree to me.

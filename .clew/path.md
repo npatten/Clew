@@ -14,3 +14,5 @@
 0037 dedupe-agent-contract-template
 0039 release-tooling-preflight-and-smoketest
 0040 move-cargo-publish-into-ci-with-trusted-publishing
+0041 harden-agent-guidance-against-manual-increment-edi
+0042 fix-clew-new-id-allocation-race

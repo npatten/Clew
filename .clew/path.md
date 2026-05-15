@@ -12,3 +12,5 @@
 0031 examine-clode-as-design-reference
 0036 make-clew-next-print-body-by-default
 0037 dedupe-agent-contract-template
+0039 release-tooling-preflight-and-smoketest
+0040 move-cargo-publish-into-ci-with-trusted-publishing

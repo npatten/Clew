@@ -1,10 +1,10 @@
 ---
 id: 8
-status: backlog
+status: abandoned
 tags:
 - needs-triage
 created_at: 2026-04-28T02:18:39Z
-updated_at: 2026-05-07T00:00:00Z
+updated_at: 2026-05-15T04:52:16Z
 ---
 
 ## Goal

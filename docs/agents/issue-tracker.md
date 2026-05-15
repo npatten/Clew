@@ -6,18 +6,18 @@ GitHub is the code remote only. Do not suggest or use GitHub Issues for project 
 
 ## Canonical commands
 
-Always invoke Clew from the repository root as `./clew`.
+Always invoke Clew from the repository root as `clew`.
 
-- List work: `./clew list`
-- Read a work item: `./clew show <id>`
-- Create a work item: `./clew new "Title"`
-- Start work: `./clew start <id>`
-- Finish work: `./clew done <id>`
+- List work: `clew list`
+- Read a work item: `clew show <id>`
+- Create a work item: `clew new "Title"`
+- Start work: `clew start <id>`
+- Finish work: `clew done <id>`
 
 Prefer creating increments with a markdown body supplied on stdin:
 
 ```bash
-./clew new "Title here" <<'EOF'
+clew new "Title here" <<'EOF'
 ## Goal
 ...
 EOF
@@ -36,13 +36,13 @@ Use Clew vocabulary in user-facing output where possible:
 
 ## When a skill says "publish to the issue tracker"
 
-Create one or more Clew increments with `./clew new`.
+Create one or more Clew increments with `clew new`.
 
 Publish dependency order first: blockers before blocked increments, so later increment bodies can reference earlier IDs.
 
 ## When a skill says "fetch the relevant ticket"
 
-Use `./clew show <id>` and read the full increment text before acting.
+Use `clew show <id>` and read the full increment text before acting.
 
 ## Direct markdown edits
 

@@ -129,7 +129,7 @@ Clew writes frontmatter itself; stdin is body content only.
 
 ## Developing Clew itself
 
-This repository uses a repo-local `./clew` runner so Clew remains available while source edits temporarily break `cargo build`. That is only for developing Clew itself; installed users should run `clew`.
+Use the installed `clew` command for normal workflow, including while developing Clew itself. Use this repository's `./clew` runner only when intentionally testing the promoted local development build from `scripts/promote-clew`.
 
 After a successful Clew increment, promote the current source build with:
 

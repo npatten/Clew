@@ -1,5 +1,5 @@
 ---
-last_major_update: 2026-05-14
+last_major_update: 2026-05-15
 ---
 
 # Clew — Design Plan
@@ -8,11 +8,11 @@ last_major_update: 2026-05-14
 
 ## Revisions
 
+- 2026-05-15 — Global `clew` is now the normal workflow while `./clew` is only for testing the promoted local dev build, because Homebrew install is the product path and self-hosting should not leak into agent instructions.
 - 2026-05-14 — `clew done` now supports `backlog → done` because terminal side effects are useful even when work is resolved before promotion or start.
 - 2026-05-01 — `clew list` now sorts ranked active work before unranked status groups because path order is the planning signal and status remains lifecycle metadata.
 - 2026-05-01 — `clew next` now repairs terminal/archived `path.md` membership before selection because Clew owns path membership while users own path order.
 - 2026-04-30 — `path.md` line format is now bare `NNNN slug` (no `#` sigil, no list markers, no status column) so the file mirrors `clew list`'s leading columns and stays drift-free against frontmatter status.
-- 2026-04-30 — `path.md` now owns rank for all non-terminal work while frontmatter remains the source of lifecycle truth, because users need one editable priority view without duplicated status sections.
 
 _Older entries pruned; use `git log hammock-thinking/crew-plan.md` for full history._
 
@@ -77,7 +77,7 @@ All state lives in plain markdown files with YAML frontmatter. Reasoning:
 ├── increments/
 │   ├── 0042-add-oauth-routes.md
 │   ├── 0043-token-refresh.md
-│   └── 0007-oauth-overhaul.md      
+│   └── 0007-oauth-overhaul.md
 ├── archive/
 │   └── 0001-old-work.md             # completed or abandoned increments
 ├── path.md                          # ordered priority list
@@ -85,7 +85,7 @@ All state lives in plain markdown files with YAML frontmatter. Reasoning:
 ```
 
 - **Hidden directory** (`.clew/`) — matches `.git/`, `.github/`, etc. Tooling/metadata convention. **Commit it.** `.clew/` is the project's shared state; treat it like source. Don't `.gitignore` it, except for explicitly local-only subdirs like this repository's `.clew/bin/` promoted runner.
-- **Single `increments/` directory** — all items are increments. 
+- **Single `increments/` directory** — all items are increments.
 - WIP: Parent-child relationships are still being designed. An increment with children is semantically an epic (a larger body of work that must ship together), but it's stored and treated like any other increment.
 - **Archive on done** — completed or abandoned increments move to `.clew/archive/`. Keeps working set small; preserves git history via normal rename detection once staged. Reopening (`clew reopen`) moves them back.
 - **User-level config lives elsewhere.** Editor preferences and other per-user settings live at `~/.config/clew/config.toml` (platform-correct path via the `directories` crate), NOT in `.clew/`. No project level config currently supported.
@@ -349,7 +349,7 @@ Cross-session context lives inside the active increment file (decisions, gotchas
 
 `clew init` also creates `#0000-bootstrap-clew`, a real setup Increment that tells the user to wire that agent contract into their chosen instruction surface, commit `.clew/`, and then mark the bootstrap done. The bootstrap reserves `#0000`, so the first normal user-created Increment is `#0001`.
 
-User-facing docs and generated docs assume Clew is installed and invoked as `clew`. This repository's `./clew` runner is only a self-hosting development convenience, not a product workflow.
+User-facing docs and generated docs assume Clew is installed and invoked as `clew`. This repository's `./clew` runner is only for intentionally testing the promoted local development build, not normal project workflow.
 
 ---
 
@@ -383,11 +383,9 @@ User-facing docs and generated docs assume Clew is installed and invoked as `cle
 
 ### Self-hosting runner
 
-In this repository, the root `./clew` command is a thin launcher for `.clew/bin/clew`, a promoted known-good binary. It intentionally does not rebuild on every invocation; project management must remain available while in-progress source edits temporarily break `cargo build`. This is repo-local development infrastructure; installed users should invoke `clew` directly.
+In this repository, the root `./clew` command is a thin launcher for `.clew/bin/clew`, a promoted known-good binary. It intentionally does not rebuild on every invocation. Normal project workflow uses the installed `clew` command; `./clew` is reserved for intentionally testing the promoted local development build.
 
 `scripts/promote-clew` is the promotion seam. It runs the quality gate, builds the release binary, and copies it into `.clew/bin/clew` only after those steps pass. The promoted binary is ignored by git because it is local build output, not shared project state.
-
-The benefit is availability and speed for agents. The cost is staleness: `./clew` can lag behind source until an explicit promotion.
 
 ### Distribution
 

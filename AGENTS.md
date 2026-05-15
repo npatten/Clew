@@ -6,7 +6,7 @@ In Greek myth, Ariadne gave Theseus the "Clew" (a ball of thread) to navigate th
 ## Resources
 
 - Full project spec: `clew-spec.md`
-- All open work items run: `./clew list`
+- All open work items run: `clew list`
 
 ## Software development
 
@@ -47,31 +47,32 @@ You are the principal engineer — guide the process, use sub-agents in parallel
 
 #### Core rules
 
-- Always invoke Clew as `./clew` from the repo root.
-- Documented loop commands: `init`, `new`, `start`, `done`, `show`, `list`, `tag`, `untag`. Other commands may be wired and visible in `./clew --help`, but are not part of the stable MVP loop yet.
+- Invoke Clew as `clew` from the repo root for normal project workflow.
+- Use `./clew` only when intentionally testing this repository's promoted local development build after `scripts/promote-clew`.
+- Documented loop commands: `init`, `new`, `start`, `done`, `show`, `list`, `tag`, `untag`. Other commands may be wired and visible in `clew --help`, but are not part of the stable MVP loop yet.
 - Prefer Clew's documented no-flag workflow; the core loop is mostly positional.
-- Do not guess flags. Use the no-flag form unless `./clew <cmd> --help` documents a flag needed for the task.
-- Use `./clew list` as the canonical view of project work. Prefer it over inspecting `.clew/increments/` or `.clew/archive/` directly.
+- Do not guess flags. Use the no-flag form unless `clew <cmd> --help` documents a flag needed for the task.
+- Use `clew list` as the canonical view of project work. Prefer it over inspecting `.clew/increments/` or `.clew/archive/` directly.
 - Use list filters instead of inspecting files directly when narrowing work:
   ```bash
-  ./clew list --tag windows
-  ./clew list --status todo
-  ./clew list --tag windows --status todo
+  clew list --tag windows
+  clew list --status todo
+  clew list --tag windows --status todo
   ```
 - Let `clew new` allocate IDs. Do not pre-compute the next ID from list output.
 
 #### Starting work
 
 - If the user has not provided an increment ID, ask before proceeding.
-- Run `./clew show <id>` which returns the full increment text; review carefully, ask questions, suggest improvements.
-- Run `./clew start <id>` before beginning implementation.
+- Run `clew show <id>` which returns the full increment text; review carefully, ask questions, suggest improvements.
+- Run `clew start <id>` before beginning implementation.
 
 #### Creating work
 
 Prefer creating increments with the body supplied on stdin:
 
 ```bash
-./clew new "Title here" <<'EOF'
+clew new "Title here" <<'EOF'
 ## Goal
 ...
 EOF
@@ -80,7 +81,7 @@ EOF
 Attach tags at creation with repeated `--tag` flags; stdin remains body-only, never frontmatter:
 
 ```bash
-./clew new "Verify Clew on WSL" --tag windows --tag distribution <<'EOF'
+clew new "Verify Clew on WSL" --tag windows --tag distribution <<'EOF'
 ## Goal
 Verify Clew works on WSL.
 EOF
@@ -89,8 +90,8 @@ EOF
 Use dedicated tag commands for existing increments:
 
 ```bash
-./clew tag 0019 windows p0
-./clew untag 0019 windows
+clew tag 0019 windows p0
+clew untag 0019 windows
 ```
 
 - Keep titles under 7 words.
@@ -127,7 +128,7 @@ Use dedicated tag commands for existing increments:
 
 Only after user approval:
 
-5. Mark the increment done with `./clew done <id>`.
+5. Mark the increment done with `clew done <id>`.
 6. Commit code, docs, and updated Clew files.
 7. Run `git status --short` and confirm the workspace is clean or only contains expected unrelated changes.
 

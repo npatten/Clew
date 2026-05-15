@@ -9,8 +9,9 @@ If `$1` is empty, ask me for the increment ID before doing anything else.
 
 ## Authority and constraints
 
-- Parent session owns orchestration, Clew commands, repo edits outside delegated worker runs, quality gates, user approval, `./clew done`, and git commits.
-- Always invoke Clew as `./clew` from the repo root.
+- Parent session owns orchestration, Clew commands, repo edits outside delegated worker runs, quality gates, user approval, `clew done`, and git commits.
+- Invoke Clew as `clew` from the repo root for normal project workflow.
+- Use `./clew` only when intentionally testing this repository's promoted local development build after `scripts/promote-clew`.
 - Use one worker by default.
 - Child subagents must receive concrete role-specific tasks. Do not ask child agents to run their own subagent workflows.
 - Do not mark the increment done or commit until `scripts/promote-clew` passes in one sweep and I approve.
@@ -25,7 +26,7 @@ If `$1` is empty, ask me for the increment ID before doing anything else.
 Run:
 
 ```bash
-./clew show $1
+clew show $1
 ```
 
 Review the increment for:
@@ -44,7 +45,7 @@ If material requirements are unclear, ask me clarification questions before star
 After scope is clear, run:
 
 ```bash
-./clew start $1
+clew start $1
 ```
 
 ### 3. Build planning context
@@ -157,14 +158,14 @@ When it passes, summarize:
 - docs/spec updates;
 - any remaining risks.
 
-Then ask me for approval before running `./clew done $1` or committing.
+Then ask me for approval before running `clew done $1` or committing.
 
 ### 11. After approval only
 
 Run:
 
 ```bash
-./clew done $1
+clew done $1
 ```
 
 Commit only files changed for this increment. Prefix the commit message with `[#$1]` and include the required `Clankers:` co-author block. Finally run:

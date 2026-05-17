@@ -11,7 +11,7 @@ pub fn run(query: &str) -> Result<(), ClewError> {
     let transition = crate::commands::transition::apply(
         &root,
         query,
-        &[Status::Backlog, Status::InProgress],
+        &[Status::Backlog, Status::Todo, Status::InProgress],
         Status::Done,
         true,
     )?;

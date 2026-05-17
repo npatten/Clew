@@ -1921,7 +1921,7 @@ fn done_transitions_backlog_to_done_and_archives() {
 }
 
 #[test]
-fn done_rejects_todo() {
+fn done_transitions_todo_to_done_and_archives() {
     let temp = empty_project();
     write_increment(
         &temp,
@@ -1935,13 +1935,15 @@ fn done_rejects_todo() {
         .current_dir(temp.path())
         .args(["done", "1"])
         .assert()
-        .failure()
-        .code(1)
-        .stderr(contains("invalid status transition"))
-        .stderr(contains("todo"));
+        .success()
+        .stdout("#0001 .clew/archive/0001-a.md\n")
+        .stderr("Done #0001\n");
 
-    assert!(temp.path().join(".clew/increments/0001-a.md").exists());
-    assert!(!temp.path().join(".clew/archive/0001-a.md").exists());
+    assert!(!temp.path().join(".clew/increments/0001-a.md").exists());
+    let archived = read_at(&temp, ".clew/archive/0001-a.md");
+    assert!(archived.contains("status: done"));
+    assert!(archived.contains("created_at: 2026-04-20T10:00:00Z"));
+    assert!(!archived.contains("updated_at: 2026-04-20T10:00:00Z"));
 }
 
 #[test]
